@@ -55,10 +55,10 @@ def fetch_weather(date: str) -> List[Dict[str, Any]]:
                     "date": date,
                     "district": district["name"],
                     "state": district["state"],
-                    "precipitation_sum": daily_data.get("precipitation_sum", [None])[0],
-                    "temperature_2m_max": daily_data.get("temperature_2m_max", [None])[0],
-                    "temperature_2m_min": daily_data.get("temperature_2m_min", [None])[0],
-                    "windspeed_10m_max": daily_data.get("windspeed_10m_max", [None])[0]
+                    "precipitation_mm": daily_data.get("precipitation_sum", [None])[0],
+                    "temp_max_c": daily_data.get("temperature_2m_max", [None])[0],
+                    "temp_min_c": daily_data.get("temperature_2m_min", [None])[0],
+                    "windspeed_kmh": daily_data.get("windspeed_10m_max", [None])[0]
                 }
                 all_weather_records.append(record)
             else:
