@@ -170,8 +170,7 @@ streamlit run dashboard/app.py
 
 ## 📸 Screenshots
 
-> [!NOTE]
-> *Dynamic dashboard mockups illustrating spatial pricing trends, rainfall indexes, correlation heatmaps, and price alerts will be updated here.*
+![Crop Price & Weather Correlation Engine Dashboard](dashboard_screenshot.png)
 
 ---
 
