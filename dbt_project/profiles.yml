@@ -1,0 +1,6 @@
+crop_pipeline:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: '../data/crop_weather.duckdb'
