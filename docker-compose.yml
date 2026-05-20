@@ -1,0 +1,83 @@
+# Run on Linux/Mac — Docker on Windows requires WSL2
+version: '3.8'
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.8.1
+  environment:
+    - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    - AIRFLOW__CORE__FERNET_KEY=46O5gR7sT9w5l2M3Q4nB=
+    - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    - DATA_GOV_API_KEY=${DATA_GOV_API_KEY}
+    - AIRFLOW_HOME=/opt/airflow
+    - RAW_DIR=/opt/airflow/data/raw
+    - PROCESSED_DIR=/opt/airflow/data/processed
+    - DUCKDB_PATH=/opt/airflow/data/crop_weather.duckdb
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./data:/opt/airflow/data
+    - ./ingestion:/opt/airflow/ingestion
+    - ./transform:/opt/airflow/transform
+    - ./db:/opt/airflow/db
+    - ./models:/opt/airflow/models
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+
+  airflow-init:
+    <<: *airflow-common
+    command: version
+    entrypoint: /bin/bash
+    # Run db init and create default admin account on first boot
+    c: |
+      airflow db init &&
+      airflow users create \
+        --username admin \
+        --firstname Admin \
+        --lastname User \
+        --role Admin \
+        --email admin@example.com \
+        --password admin
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: ./dashboard/Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      - DUCKDB_PATH=/app/data/crop_weather.duckdb
+    volumes:
+      - ./data:/app/data
+      - ./dashboard:/app/dashboard
+      - ./models:/app/models
+    depends_on:
+      - airflow-webserver
