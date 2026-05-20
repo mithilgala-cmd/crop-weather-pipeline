@@ -84,11 +84,26 @@ class PricePredictor:
         """
         Predict the next day's price given the latest available row.
         """
+        row_copy = dict(latest_row)
+        
+        if 'date' in row_copy:
+            date_obj = pd.to_datetime(row_copy['date'])
+            if 'day_of_week' not in row_copy or pd.isna(row_copy.get('day_of_week')):
+                row_copy['day_of_week'] = date_obj.dayofweek
+            if 'month' not in row_copy or pd.isna(row_copy.get('month')):
+                row_copy['month'] = date_obj.month
+                
+        if 'modal_price' in row_copy:
+            if 'lag_7_price' not in row_copy or pd.isna(row_copy.get('lag_7_price')):
+                row_copy['lag_7_price'] = row_copy['modal_price']
+            if 'lag_14_price' not in row_copy or pd.isna(row_copy.get('lag_14_price')):
+                row_copy['lag_14_price'] = row_copy['modal_price']
+
         # Convert to DataFrame to ensure correct order and shape
-        input_df = pd.DataFrame([latest_row])
+        input_df = pd.DataFrame([row_copy])
         
         # Ensure all required features are present
-        missing_features = [f for f in self.features if f not in input_df.columns]
+        missing_features = [f for f in self.features if f not in input_df.columns or pd.isna(input_df[f].iloc[0])]
         if missing_features:
             raise ValueError(f"Missing required features: {missing_features}")
                 
