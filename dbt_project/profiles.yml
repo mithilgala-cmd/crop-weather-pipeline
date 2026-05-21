@@ -3,4 +3,6 @@ crop_pipeline:
   outputs:
     dev:
       type: duckdb
-      path: '../data/crop_weather.duckdb'
+      path: "{{ env_var('DUCKDB_PATH') }}"
+      extensions: []
+      schema: main

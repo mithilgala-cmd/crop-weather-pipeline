@@ -4,6 +4,15 @@ An end-to-end data engineering pipeline that correlates daily crop prices (mandi
 
 ---
 
+## ✨ Key Features
+
+- **Price–Weather Correlation** — joins daily mandi market prices with Open-Meteo weather data (rainfall, temperature, windspeed) across 8 major farming districts
+- **dbt Medallion Architecture** — Bronze → Silver → Gold transformation layers structured on an embedded DuckDB analytical engine
+- **Volatility Alerting** — computes per-commodity volatility scores and labels (HIGH / MEDIUM / LOW), triggering alerts for high price-swing events
+- **XGBoost Price Predictor** — forecasts next-week modal prices using 7/14-day price lags and weather feature inputs, served live in the Streamlit dashboard
+
+---
+
 ## 🏗️ Architecture
 
 ```text
@@ -22,7 +31,7 @@ An end-to-end data engineering pipeline that correlates daily crop prices (mandi
                       |
                       v
          +--------------------------+
-         |    Pandas ETL Engine     | <--- Casing, NaN cleaning, joining
+          | dbt Transform Layer      | <--- Bronze → Silver → Gold Medallion
          +--------------------------+
                       |
                       v
@@ -112,6 +121,27 @@ crop-pipeline/
 
 ---
 
+## 🚀 Quick Start
+
+```bash
+# 1. Clone
+git clone https://github.com/mithilgala-cmd/crop-weather-pipeline.git
+cd crop-weather-pipeline
+
+# 2. Configure environment
+cp .env.example .env
+# Edit .env and add your DATA_GOV_API_KEY
+
+# 3. Install dependencies
+python -m venv .venv && .venv\Scripts\Activate.ps1   # Windows
+pip install -r requirements.txt
+
+# 4. Launch dashboard
+streamlit run dashboard/app.py
+```
+
+---
+
 ## ⚡ Setup & Installation
 
 ### 1. Clone the Repository
@@ -168,9 +198,31 @@ streamlit run dashboard/app.py
 
 ---
 
-## 📸 Screenshots
+## 📸 Dashboard HTML Placeholder
 
-![Crop Price & Weather Correlation Engine Dashboard](dashboard_screenshot.png)
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <link rel="shortcut icon" href="./favicon.png" />
+    <title>Streamlit</title>
+    <script>
+      window.prerenderReady = false
+    </script>
+    <script type="module" crossorigin src="./static/js/index.D2ZqaFuW.js"></script>
+    <!-- other preloads omitted for brevity -->
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
+```
 
 ---
 
