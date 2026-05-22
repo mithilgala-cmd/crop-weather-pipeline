@@ -7,4 +7,4 @@ SELECT
     ROUND(AVG(volatility_score), 4) AS avg_volatility,
     ROUND(MAX(volatility_score), 4) AS max_volatility
 FROM {{ ref('joined_prices') }}
-GROUP BY 1, 2, 3
+GROUP BY 1, 2, 3;

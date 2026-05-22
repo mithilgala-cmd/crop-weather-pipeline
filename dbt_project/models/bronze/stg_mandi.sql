@@ -7,4 +7,4 @@ SELECT
     CAST(min_price AS DOUBLE)   AS min_price,
     CAST(max_price AS DOUBLE)   AS max_price
 FROM {{ source('raw', 'mandi_raw') }}
-WHERE modal_price IS NOT NULL AND modal_price > 0
+WHERE modal_price IS NOT NULL AND modal_price > 0;
