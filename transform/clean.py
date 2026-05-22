@@ -33,9 +33,10 @@ def clean_weather(df: pd.DataFrame) -> pd.DataFrame:
     - Strip and title‑case district
     - Fill missing precipitation with 0
     """
-    numeric_cols = ["precipitation_sum", "temperature_2m_max", "temperature_2m_min", "windspeed_10m_max"]
+    numeric_cols = ["precipitation_mm", "temp_max_c", "temp_min_c", "windspeed_kmh"]
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     df["district"] = df["district"].astype(str).str.strip().str.title()
-    df["precipitation_sum"] = df["precipitation_sum"].fillna(0)
+    df["precipitation_mm"] = df["precipitation_mm"].fillna(0.0)
     return df
+

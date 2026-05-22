@@ -10,6 +10,7 @@ def compute_volatility(df: pd.DataFrame) -> pd.DataFrame:
     - ``volatility_label`` based on score thresholds
     - ``price_change_pct`` percentage change of ``modal_price`` compared to the previous day for the same commodity & district
     """
+    df = df.copy()
     # Ensure numeric columns are float
     for col in ["min_price", "max_price", "modal_price"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -27,8 +28,12 @@ def compute_volatility(df: pd.DataFrame) -> pd.DataFrame:
     df["volatility_label"] = np.select(conditions, choices, default=pd.NA)
 
     # Compute price_change_pct per commodity and district
-    df = df.sort_values(by=["commodity", "district", "date"]).reset_index(drop=True)
+    sort_cols = ["commodity", "district"]
+    if "date" in df.columns:
+        sort_cols.append("date")
+    df = df.sort_values(by=sort_cols).reset_index(drop=True)
     df["price_change_pct"] = (
         df.groupby(["commodity", "district"])["modal_price"].pct_change() * 100
     )
     return df
+

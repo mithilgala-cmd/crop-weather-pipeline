@@ -3,3 +3,9 @@
 data/raw/
 data/processed/
 __pycache__/
+.pytest_cache/
+.venv/
+venv/
+dbt_project/target/
+dbt_project/logs/
+dbt_project/dbt_packages/

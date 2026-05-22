@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: main
+    tables:
+      - name: mandi_raw
+        meta:
+          external_location: "read_json_auto('{{ env_var('RAW_DIR', './data/raw') }}/mandi_*.json')"
+      - name: weather_raw
+        meta:
+          external_location: "read_json_auto('{{ env_var('RAW_DIR', './data/raw') }}/weather_*.json')"

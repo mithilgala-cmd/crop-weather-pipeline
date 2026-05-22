@@ -16,6 +16,8 @@ def join_mandi_weather(mandi_df: pd.DataFrame, weather_df: pd.DataFrame) -> pd.D
     pd.DataFrame
         DataFrame containing all mandi rows plus matching weather columns where available.
     """
+    mandi_df = mandi_df.copy()
+    weather_df = weather_df.copy()
     # Ensure date columns are datetime for both frames
     mandi_df['date'] = pd.to_datetime(mandi_df['date'])
     weather_df['date'] = pd.to_datetime(weather_df['date'])

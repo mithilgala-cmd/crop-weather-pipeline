@@ -1,9 +1,9 @@
 name: crop_weather
 version: '1.0'
-profile: default
+profile: crop_pipeline
 config-version: 2
 seed-paths: ["seeds"]
-source-paths: ["models"]
+model-paths: ["models"]
 analysis-paths: ["analysis"]
 target-path: "target"
 clean-targets:

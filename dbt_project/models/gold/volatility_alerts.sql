@@ -1,10 +1,10 @@
 SELECT
-    alert_date,
+    date AS alert_date,
     commodity,
     district,
     volatility_score,
     modal_price,
     precipitation_mm,
-    alert_reason
-FROM {{ ref('alerts') }}
-WHERE volatility_score > 0.3;
+    'HIGH_VOLATILITY' AS alert_reason
+FROM {{ ref('joined_prices') }}
+WHERE volatility_label = 'HIGH'
