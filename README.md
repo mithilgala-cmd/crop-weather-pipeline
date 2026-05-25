@@ -7,7 +7,7 @@ An end-to-end data engineering and predictive analytics pipeline that ingests da
 ## 🚀 Key Features
 
 * **🛰️ Multi-Source Ingestion Layer** — Automated pipelines fetching Indian government agricultural market (mandi) prices (Tomato, Onion, Potato, Wheat, Rice, Maize, Soybean) and daily district-level weather records from the Open-Meteo API.
-* **🥇 dbt Medallion Architecture** — Structured data modeling (Bronze $\rightarrow$ Silver $\rightarrow$ Gold) using dbt Core and an embedded **DuckDB** analytical query engine.
+* **🥇 dbt Medallion Architecture** — Structured data modeling (Bronze → Silver → Gold) using dbt Core and an embedded **DuckDB** analytical query engine.
 * **📈 Volatility Alerting System** — Automatically calculates price volatility indices and generates real-time alerts whenever price swings exceed critical thresholds.
 * **🧠 Predictive XGBoost Engine** — Forecasts next-week crop prices using day properties, seasonal precipitation, max/min temperatures, and 7/14-day price lags.
 * **💎 Dark-Glass Streamlit Dashboard** — An interactive executive interface with smooth HSL gradients, Plotly price overlays, volatility heatmap grids, and an **on-the-fly model training terminal**.
@@ -25,11 +25,12 @@ graph TD
     A2[Open-Meteo API] -->|JSON Ingestion| B2[(Raw Weather Storage)]
     
     %% dbt Medallion Architecture
-    subgraph dbt Medallion Architecture on DuckDB
+    subgraph "dbt Medallion Architecture on DuckDB"
         B1 -->|Trim, Clean, Cast| C1[Bronze: stg_mandi]
         B2 -->|Clean, Parse Datetime| C2[Bronze: stg_weather]
         
-        C1 & C2 -->|Left Join on District + Date| D[Silver: joined_prices]
+        C1 -->|Left Join on District + Date| D[Silver: joined_prices]
+        C2 -->|Left Join on District + Date| D[Silver: joined_prices]
         
         D -->|Group & Trunc Week| E1[Gold: weekly_aggregates]
         D -->|Filter Volatility > 0.3| E2[Gold: volatility_alerts]
@@ -38,7 +39,8 @@ graph TD
     %% Analytics & ML
     D -->|Idempotent Load| F[(DuckDB Database)]
     F -->|Historical Features| G[XGBoost Predictor]
-    F & G -->|Visual Reports & Predictions| H[Streamlit Dashboard]
+    F -->|Visual Reports & Predictions| H[Streamlit Dashboard]
+    G -->|Visual Reports & Predictions| H[Streamlit Dashboard]
 ```
 
 ---
@@ -156,7 +158,7 @@ The executive dashboard renders interactive trends, dual-axis Plotly charts, ale
 ## 💼 Placement Portfolio Resume Bullets
 
 * **Built an End-to-End ELT Pipeline** ingesting daily mandi market crop prices + historical weather indices across 8 high-yield districts, orchestrated via scheduled daily Airflow DAG workflows.
-* **Structured a dbt Medallion Architecture** (Bronze $\rightarrow$ Silver $\rightarrow$ Gold) directly on top of an embedded **DuckDB** analytical query engine, optimizing analytical joins and partitioning strategy.
+* **Structured a dbt Medallion Architecture** (Bronze → Silver → Gold) directly on top of an embedded **DuckDB** analytical query engine, optimizing analytical joins and partitioning strategy.
 * **Trained an XGBoost Regressor Model** achieving high accuracy on next-week agricultural price thresholds utilizing historical price lags, seasonal precipitation, and district temperature inputs.
 * **Developed a High-Fidelity Streamlit Dashboard** utilizing glassmorphism visual styles, HSL custom color spaces, dual-axis charts, and an interactive **on-the-fly model training terminal** for custom district/crop forecasting.
 * **Authored Isolated Pytest Suites** covering enterprise-grade API mocking (timeouts, 429 rate limits, and malformed payload resilience) and telemetry request logs, achieving a **100% test verification pass rate**.
