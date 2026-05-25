@@ -75,7 +75,9 @@ crop-weather-pipeline/
 │   ├── raw/                       # Daily raw JSON backups
 │   └── processed/                 # Consolidated Parquet outputs
 ├── tests/
+│   ├── mock_services.py           # Enterprise API mocking and observability server
 │   ├── test_all_modules.py        # Module integration tests
+│   ├── test_api_observability.py  # Resiliency, timeout, and failure tests under varying scenarios
 │   ├── test_fetch_mandi.py        # Sandboxed fetch_mandi API mocking
 │   ├── test_generated.py          # Sandboxed generated test cases
 │   ├── test_loader.py             # Database loader and alerts verification
@@ -157,4 +159,4 @@ The executive dashboard renders interactive trends, dual-axis Plotly charts, ale
 * **Structured a dbt Medallion Architecture** (Bronze $\rightarrow$ Silver $\rightarrow$ Gold) directly on top of an embedded **DuckDB** analytical query engine, optimizing analytical joins and partitioning strategy.
 * **Trained an XGBoost Regressor Model** achieving high accuracy on next-week agricultural price thresholds utilizing historical price lags, seasonal precipitation, and district temperature inputs.
 * **Developed a High-Fidelity Streamlit Dashboard** utilizing glassmorphism visual styles, HSL custom color spaces, dual-axis charts, and an interactive **on-the-fly model training terminal** for custom district/crop forecasting.
-* **Authored Isolated Pytest Suites** covering API endpoint mocking, schema constraints, and database transactional updates, achieving a **100% test verification pass rate**.
+* **Authored Isolated Pytest Suites** covering enterprise-grade API mocking (timeouts, 429 rate limits, and malformed payload resilience) and telemetry request logs, achieving a **100% test verification pass rate**.
