@@ -78,12 +78,11 @@ crop-weather-pipeline/
 │   └── processed/                 # Consolidated Parquet outputs
 ├── tests/
 │   ├── mock_services.py           # Enterprise API mocking and observability server
-│   ├── test_all_modules.py        # Module integration tests
 │   ├── test_api_observability.py  # Resiliency, timeout, and failure tests under varying scenarios
 │   ├── test_fetch_mandi.py        # Sandboxed fetch_mandi API mocking
-│   ├── test_generated.py          # Sandboxed generated test cases
 │   ├── test_loader.py             # Database loader and alerts verification
-│   └── test_real_api.py           # Network-safe external API validation
+│   ├── test_real_api.py           # Network-safe external API validation
+│   └── test_transform.py          # Transformations cleaning, joins, and volatility tests
 ├── docker-compose.yml             # Scalable Airflow + Streamlit stack setup
 ├── requirements.txt               # Project dependencies
 └── README.md                      # Documentation
