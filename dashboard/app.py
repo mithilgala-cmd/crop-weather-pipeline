@@ -317,7 +317,7 @@ def main():
         color: #94a3b8;
     }
     </style>
-    """,StartLine:249,TargetContent:
+    """, unsafe_allow_html=True)
 
     # Header section
     st.markdown("""
