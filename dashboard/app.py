@@ -24,7 +24,7 @@ def load_data():
     except Exception as e:
         pass
     
-    # Elegant fallback with gorgeous mock data so dashboard doesn't crash on initial boot
+    # Mock data fallback
     df = pd.DataFrame([
         {
             "date": pd.to_datetime("2026-05-15"),
@@ -153,7 +153,7 @@ def main():
         initial_sidebar_state='expanded'
     )
 
-    # Inject Premium CSS Style with Glassmorphic Accent
+    # Inject global CSS styles
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
@@ -377,7 +377,7 @@ def main():
     tab1, tab2 = st.tabs(["📊 Price & Weather Trends", "🗺️ Volatility Heatmap & Alerts"])
     
     with tab1:
-        # Create dual axis chart using Plotly graph objects for visual excellence
+        # Dual-axis Plotly trend chart
         fig = go.Figure()
         
         # Add modal price line per commodity
@@ -451,7 +451,7 @@ def main():
             st.markdown("<h4 style='font-weight: 600; text-align: center;'>🔥 Volatility Heatmap</h4>", unsafe_allow_html=True)
             heatmap_df = filtered_df.groupby(['district', 'commodity'])['volatility_score'].mean().reset_index()
             
-            # Use glowing accessible color-blind friendly continuous scale
+            # Accessible sequential scale
             fig_heat = px.density_heatmap(
                 heatmap_df,
                 x='district',
@@ -510,7 +510,7 @@ def main():
     # ML Prediction Dashboard Section
     st.markdown("<h3 style='margin-top: 2rem; font-weight: 600;'>🔮 Predictive AI Price Forecasting</h3>", unsafe_allow_html=True)
     
-    # Sensible and modern Crop Metadata dictionary for visual consistency
+    # Crop metadata configuration
     CROP_META = {
         "Tomato": {"emoji": "🍅", "color": "#ef4444", "class": "glass-card-tomato"},
         "Onion": {"emoji": "🧅", "color": "#a855f7", "class": "glass-card-onion"},
@@ -521,10 +521,10 @@ def main():
         "Soybean": {"emoji": "🫘", "color": "#6366f1", "class": "glass-card-generic"}
     }
     
-    # District target selector (cleaner, unified UX)
+    # District selector
     pred_district = st.selectbox("📍 Select Target District for Forecasting Models", districts)
     
-    # Generate responsive multi-column grid of metrics cards for all selected commodities
+    # Dynamic card grid rendering
     cols_per_row = 3
     for row_idx in range(0, len(selected_commodities), cols_per_row):
         row_commodities = selected_commodities[row_idx:row_idx + cols_per_row]
@@ -624,7 +624,7 @@ def main():
                         latest_price = latest_row.get("modal_price", 100.0)
                         price_change = ((pred_price - latest_price) / latest_price) * 100
                         
-                        # Sparkline line chart setup for high-fidelity visual context
+                        # Sparkline line chart setup
                         crop_history = filtered_df[
                             (filtered_df['commodity'] == crop) & 
                             (filtered_df['district'] == pred_district)
