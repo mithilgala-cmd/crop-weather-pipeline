@@ -256,8 +256,35 @@ def main():
         display: inline-block;
         margin-top: 0.5rem;
     }
+    
+    /* Crop-specific glowing glass cards */
+    .glass-card-tomato {
+        border-left: 4px solid #ef4444 !important;
+        box-shadow: 0 8px 32px 0 rgba(239, 68, 68, 0.08) !important;
+    }
+    .glass-card-onion {
+        border-left: 4px solid #a855f7 !important;
+        box-shadow: 0 8px 32px 0 rgba(168, 85, 247, 0.08) !important;
+    }
+    .glass-card-potato {
+        border-left: 4px solid #f59e0b !important;
+        box-shadow: 0 8px 32px 0 rgba(245, 158, 11, 0.08) !important;
+    }
+    .glass-card-wheat {
+        border-left: 4px solid #eab308 !important;
+        box-shadow: 0 8px 32px 0 rgba(234, 179, 8, 0.08) !important;
+    }
+    .glass-card-generic {
+        border-left: 4px solid #3b82f6 !important;
+        box-shadow: 0 8px 32px 0 rgba(59, 130, 246, 0.08) !important;
+    }
+    .glass-card-footer {
+        padding: 0.6rem 1rem;
+        font-size: 0.8rem;
+        color: #94a3b8;
+    }
     </style>
-    """, unsafe_allow_html=True)
+    """,StartLine:249,TargetContent:
 
     # Header section
     st.markdown("""
@@ -282,13 +309,24 @@ def main():
     selected_districts = st.sidebar.multiselect('📍 Selected District(s)', districts, default=districts[:3])
     selected_commodities = st.sidebar.multiselect('📦 Selected Commodity(ies)', commodities, default=commodities[:2])
     
-    date_range = st.sidebar.date_input('📅 Analysis Date Range', [], help='Select start and end dates')
+    # Sensible defaults for date range (last 30 days of dataset)
+    min_date = df['date'].min().date()
+    max_date = df['date'].max().date()
+    default_start = max(min_date, max_date - pd.Timedelta(days=30))
+    
+    date_range = st.sidebar.date_input(
+        '📅 Analysis Date Range',
+        value=(default_start, max_date),
+        min_value=min_date,
+        max_value=max_date,
+        help='Select start and end dates'
+    )
     
     # Filter dataset
     filtered_df = df.copy()
-    if len(date_range) == 2:
+    if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
         start_date, end_date = date_range
-        mask = (filtered_df['date'] >= pd.Timestamp(start_date)) & (filtered_df['date'] <= pd.Timestamp(end_date))
+        mask = (filtered_df['date'].dt.date >= start_date) & (filtered_df['date'].dt.date <= end_date)
         filtered_df = filtered_df.loc[mask]
         
     filtered_df = filtered_df[filtered_df['district'].isin(selected_districts) & filtered_df['commodity'].isin(selected_commodities)]
@@ -413,13 +451,14 @@ def main():
             st.markdown("<h4 style='font-weight: 600; text-align: center;'>🔥 Volatility Heatmap</h4>", unsafe_allow_html=True)
             heatmap_df = filtered_df.groupby(['district', 'commodity'])['volatility_score'].mean().reset_index()
             
+            # Use glowing accessible color-blind friendly continuous scale
             fig_heat = px.density_heatmap(
                 heatmap_df,
                 x='district',
                 y='commodity',
                 z='volatility_score',
-                color_continuous_scale='RdYlGn_r',
-                labels={'volatility_score': 'Avg Volatility'}
+                color_continuous_scale=['#10b981', '#f59e0b', '#ef4444'],
+                labels={'volatility_score': 'Avg Volatility', 'commodity': 'Commodity', 'district': 'District'}
             )
             fig_heat.update_layout(
                 paper_bgcolor='rgba(0,0,0,0)',
@@ -433,164 +472,217 @@ def main():
             st.markdown("<h4 style='font-weight: 600;'>🚨 Real-time Volatility Alerts</h4>", unsafe_allow_html=True)
             alerts_df = load_alerts()
             
-            # Filter alerts for selections
+            # Clean "Pototo" typo in loaded/mocked alerts if present
             if not alerts_df.empty:
+                if 'district' in alerts_df.columns:
+                    alerts_df['district'] = alerts_df['district'].replace('Pototo', 'Potato')
+                if 'commodity' in alerts_df.columns:
+                    alerts_df['commodity'] = alerts_df['commodity'].replace('Pototo', 'Potato')
+                
                 alerts_df = alerts_df[
                     alerts_df['district'].isin(selected_districts) & 
                     alerts_df['commodity'].isin(selected_commodities)
                 ]
                 
             if alerts_df.empty:
-                st.write("🟢 No active volatility alerts in selected area.")
+                st.markdown("<div style='color: #34d399; font-weight: 600; padding: 1rem;'>🟢 No active volatility alerts in selected area.</div>", unsafe_allow_html=True)
             else:
-                # Beautifully styled DataFrame
-                st.dataframe(
-                    alerts_df.style.background_gradient(cmap='Reds', subset=['volatility_score']),
-                    use_container_width=True
-                )
+                # Add calculated labels if not present
+                if 'volatility_label' not in alerts_df.columns:
+                    alerts_df['volatility_label'] = alerts_df['volatility_score'].apply(
+                        lambda x: 'HIGH' if x > 0.3 else ('MEDIUM' if x > 0.1 else 'LOW')
+                    )
+                
+                # Render beautiful custom glassmorphic list rows for visual excellence
+                for idx, row in alerts_df.iterrows():
+                    st.markdown(f"""
+                    <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 0.8rem 1.2rem; margin-bottom: 0.6rem; display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(10px);">
+                        <div>
+                            <span style="background: { '#ef444426' if row['volatility_label'] == 'HIGH' else '#f59e0b26' }; color: { '#ef4444' if row['volatility_label'] == 'HIGH' else '#f59e0b' }; border: 1px solid { '#ef444440' if row['volatility_label'] == 'HIGH' else '#f59e0b40' }; padding: 0.25rem 0.5rem; border-radius: 6px; font-weight: 600; font-size: 0.75rem; margin-right: 0.8rem;">{row['volatility_label']} RISK</span>
+                            <span style="font-weight: 600; color: #ffffff; font-size: 0.95rem;">{row['commodity']} &mdash; {row['district']}</span>
+                        </div>
+                        <div style="text-align: right; font-size: 0.85rem; color: #94a3b8;">
+                            💧 {row['precipitation_mm']:.1f} mm Rain | 📈 Volatility: <b>{row['volatility_score']:.3f}</b>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
     # ML Prediction Dashboard Section
     st.markdown("<h3 style='margin-top: 2rem; font-weight: 600;'>🔮 Predictive AI Price Forecasting</h3>", unsafe_allow_html=True)
     
-    # Dropdowns to choose target
-    p_col1, p_col2 = st.columns(2)
-    with p_col1:
-        pred_district = st.selectbox("📍 Select District for Prediction", districts)
-    with p_col2:
-        pred_commodity = st.selectbox("📦 Select Commodity for Prediction", commodities)
-
-    # Filename matching lowercased safe pattern
-    model_filename = f"models/saved/{pred_commodity.lower().replace(' ', '_')}_{pred_district.lower().replace(' ', '_')}.pkl"
+    # Sensible and modern Crop Metadata dictionary for visual consistency
+    CROP_META = {
+        "Tomato": {"emoji": "🍅", "color": "#ef4444", "class": "glass-card-tomato"},
+        "Onion": {"emoji": "🧅", "color": "#a855f7", "class": "glass-card-onion"},
+        "Potato": {"emoji": "🥔", "color": "#f59e0b", "class": "glass-card-potato"},
+        "Wheat": {"emoji": "🌾", "color": "#eab308", "class": "glass-card-wheat"},
+        "Rice": {"emoji": "🍚", "color": "#3b82f6", "class": "glass-card-generic"},
+        "Maize": {"emoji": "🌽", "color": "#10b981", "class": "glass-card-generic"},
+        "Soybean": {"emoji": "🫘", "color": "#6366f1", "class": "glass-card-generic"}
+    }
     
-    # Check if we have this model
-    model_exists = Path(model_filename).exists()
+    # District target selector (cleaner, unified UX)
+    pred_district = st.selectbox("📍 Select Target District for Forecasting Models", districts)
     
-    if not model_exists:
-        st.markdown(f"""
-        <div class="glass-card" style="border: 1px dashed rgba(239, 68, 68, 0.4);">
-            <h4 style="color: #f87171; font-weight: 600; margin-top:0;">⚠️ XGBoost Predictor Not Found</h4>
-            <p style="color: #94a3b8; font-size: 0.95rem;">
-                No pre-trained forecasting model currently exists for <b>{pred_commodity}</b> in <b>{pred_district}</b>.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+    # Generate responsive multi-column grid of metrics cards for all selected commodities
+    cols_per_row = 3
+    for row_idx in range(0, len(selected_commodities), cols_per_row):
+        row_commodities = selected_commodities[row_idx:row_idx + cols_per_row]
+        cols = st.columns(len(row_commodities))
         
-        if st.button("⚡ Train Price Predictor Model On‑The‑Fly"):
-            from models.price_predictor import PricePredictor
-            
-            with st.spinner("Preparing features and training XGBoost model..."):
-                try:
-                    # Query data from DuckDB for training
-                    con = get_duckdb_conn()
-                    df_train = con.execute("""
-                        SELECT * FROM price_weather 
-                        WHERE commodity = ? AND district = ?
-                        ORDER BY date ASC
-                    """, [pred_commodity, pred_district]).fetchdf()
-                    con.close()
-                    
-                    if len(df_train) < 3:
-                        # Fallback: train on all districts for this commodity to get some rows
-                        st.info("Insufficient local district data. Expanding training set to all districts for this commodity.")
-                        con = get_duckdb_conn()
-                        df_train = con.execute("""
-                            SELECT * FROM price_weather 
-                            WHERE commodity = ?
-                            ORDER BY date ASC
-                        """, [pred_commodity]).fetchdf()
-                        con.close()
-                    
-                    if df_train.empty:
-                        # Use mock data to train so user is never blocked
-                        st.warning("No data in DuckDB. Bootstrapping training with simulated dashboard dataset.")
-                        df_train = load_data()
-                        df_train = df_train[df_train['commodity'] == pred_commodity]
-                        
-                    # Initialize & Train
-                    predictor = PricePredictor()
-                    predictor.train(df_train, pred_commodity, pred_district)
-                    
-                    # Save
-                    os.makedirs("models/saved", exist_ok=True)
-                    predictor.save(model_filename)
-                    
-                    st.toast(f"🎉 Model trained successfully for {pred_commodity} ({pred_district})!")
-                    st.rerun()
-                    
-                except Exception as ex:
-                    st.error(f"Error training model: {ex}")
-                    
-    else:
-        # Load and predict!
-        from models.price_predictor import PricePredictor
-        
-        try:
-            predictor = PricePredictor()
-            predictor.load(model_filename)
-            
-            # Fetch latest row for this combo from DuckDB
-            con = get_duckdb_conn()
-            latest_row_df = con.execute("""
-                SELECT * FROM price_weather 
-                WHERE commodity = ? AND district = ?
-                ORDER BY date DESC
-                LIMIT 1
-            """, [pred_commodity, pred_district]).fetchdf()
-            con.close()
-            
-            if latest_row_df.empty:
-                # Use latest from our fallback dataframe
-                temp_df = df[(df['commodity'] == pred_commodity) & (df['district'] == pred_district)]
-                if not temp_df.empty:
-                    latest_row = temp_df.sort_values('date').iloc[-1].to_dict()
-                else:
-                    latest_row = df.iloc[-1].to_dict()
-            else:
-                latest_row = latest_row_df.iloc[0].to_dict()
-            
-            # Predict
-            result = predictor.predict_next_week(latest_row)
-            pred_price = result["predicted_modal_price"]
-            latest_price = latest_row.get("modal_price", 100.0)
-            price_change = ((pred_price - latest_price) / latest_price) * 100
-            
-            # Render prediction stats beautifully
-            st.markdown(f"""
-            <div class="glass-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                    <div>
-                        <span class="metric-label">Model Target</span>
-                        <h4 style="margin: 0; color: #ffffff;">{pred_commodity} Price Forecasting ({pred_district})</h4>
-                        <p style="color: #94a3b8; font-size: 0.9rem; margin-top:0.3rem;">
-                            Based on local precipitation ({latest_row.get('precipitation_mm', 0.0):.1f} mm) and temp ranges ({latest_row.get('temp_min_c', 0.0):.1f}°C to {latest_row.get('temp_max_c', 0.0):.1f}°C).
+        for col, crop in zip(cols, row_commodities):
+            with col:
+                crop_meta = CROP_META.get(crop, {"emoji": "📦", "color": "#3b82f6", "class": "glass-card-generic"})
+                crop_emoji = crop_meta["emoji"]
+                crop_color = crop_meta["color"]
+                
+                # Check for trained model
+                model_filename = f"models/saved/{crop.lower().replace(' ', '_')}_{pred_district.lower().replace(' ', '_')}.pkl"
+                model_exists = Path(model_filename).exists()
+                
+                if not model_exists:
+                    st.markdown(f"""
+                    <div class="glass-card {crop_meta.get('class', 'glass-card-generic')}" style="border: 1px dashed {crop_color}40; margin-bottom: 0.5rem; padding-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="margin: 0; color: #ffffff; font-size: 1.1rem;">{crop_emoji} {crop}</h4>
+                            <span style="background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 600; font-size: 0.7rem;">Untrained</span>
+                        </div>
+                        <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.8rem; min-height: 48px;">
+                            No XGBoost model exists for <b>{crop}</b> in <b>{pred_district}</b>.
                         </p>
                     </div>
-                    <div style="text-align: right;">
-                        <span class="metric-label">Predicted Modal Price (Next Week)</span>
-                        <div class="metric-value" style="color: #60a5fa; font-size: 2.5rem; margin:0;">₹{pred_price:,.2f}</div>
-                        {"<div class='danger-badge'>⚠️ High Volatility Expected</div>" if abs(price_change) > 15 else "<div class='success-badge'>🟢 Stable Forecasted Trend</div>"}
-                    </div>
-                </div>
-                <hr style="border-color: rgba(255,255,255,0.05); margin: 1.5rem 0;">
-                <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
-                    <div>
-                        <span class="metric-label" style="font-size:0.8rem;">Current Price</span>
-                        <h5 style="margin:0; color:#cbd5e1;">₹{latest_price:,.2f}</h5>
-                    </div>
-                    <div>
-                        <span class="metric-label" style="font-size:0.8rem;">Expected Price Swing</span>
-                        <h5 style="margin:0; color:{'#f87171' if price_change < 0 else '#34d399'};">{price_change:+.2f}%</h5>
-                    </div>
-                    <div>
-                        <span class="metric-label" style="font-size:0.8rem;">Model Type</span>
-                        <h5 style="margin:0; color:#94a3b8;">XGBoost Regressor v2.0</h5>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        except Exception as e:
-            st.error(f"Error executing prediction: {e}")
+                    """, unsafe_allow_html=True)
+                    
+                    if st.button(f"⚡ Train {crop} Model", key=f"train_{crop}_{pred_district}"):
+                        from models.price_predictor import PricePredictor
+                        with st.spinner(f"Training model for {crop}..."):
+                            try:
+                                # Query data from DuckDB for training
+                                con = get_duckdb_conn()
+                                df_train = con.execute("""
+                                    SELECT * FROM price_weather 
+                                    WHERE commodity = ? AND district = ?
+                                    ORDER BY date ASC
+                                """, [crop, pred_district]).fetchdf()
+                                con.close()
+                                
+                                if len(df_train) < 3:
+                                    # Fallback: train on all districts for this commodity
+                                    con = get_duckdb_conn()
+                                    df_train = con.execute("""
+                                        SELECT * FROM price_weather 
+                                        WHERE commodity = ?
+                                        ORDER BY date ASC
+                                    """, [crop]).fetchdf()
+                                    con.close()
+                                
+                                if df_train.empty:
+                                    df_train = load_data()
+                                    df_train = df_train[df_train['commodity'] == crop]
+                                    
+                                # Initialize & Train
+                                predictor = PricePredictor()
+                                predictor.train(df_train, crop, pred_district)
+                                
+                                # Save
+                                os.makedirs("models/saved", exist_ok=True)
+                                predictor.save(model_filename)
+                                
+                                st.toast(f"🎉 Model trained successfully for {crop}!")
+                                st.rerun()
+                            except Exception as ex:
+                                st.error(f"Error: {ex}")
+                else:
+                    # Model exists! Load and predict
+                    from models.price_predictor import PricePredictor
+                    try:
+                        predictor = PricePredictor()
+                        predictor.load(model_filename)
+                        
+                        # Fetch latest row for this combo
+                        con = get_duckdb_conn()
+                        latest_row_df = con.execute("""
+                            SELECT * FROM price_weather 
+                            WHERE commodity = ? AND district = ?
+                            ORDER BY date DESC
+                            LIMIT 1
+                        """, [crop, pred_district]).fetchdf()
+                        con.close()
+                        
+                        if latest_row_df.empty:
+                            temp_df = df[(df['commodity'] == crop) & (df['district'] == pred_district)]
+                            if not temp_df.empty:
+                                latest_row = temp_df.sort_values('date').iloc[-1].to_dict()
+                            else:
+                                latest_row = df.iloc[-1].to_dict()
+                        else:
+                            latest_row = latest_row_df.iloc[0].to_dict()
+                        
+                        # Predict
+                        result = predictor.predict_next_week(latest_row)
+                        pred_price = result["predicted_modal_price"]
+                        latest_price = latest_row.get("modal_price", 100.0)
+                        price_change = ((pred_price - latest_price) / latest_price) * 100
+                        
+                        # Sparkline line chart setup for high-fidelity visual context
+                        crop_history = filtered_df[
+                            (filtered_df['commodity'] == crop) & 
+                            (filtered_df['district'] == pred_district)
+                        ].sort_values('date')
+                        
+                        st.markdown(f"""
+                        <div class="glass-card {crop_meta.get('class', 'glass-card-generic')}" style="margin-bottom: 0.2rem; padding-bottom: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h4 style="margin: 0; color: #ffffff; font-size: 1.1rem;">{crop_emoji} {crop}</h4>
+                                {"<span style='background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 600; font-size: 0.7rem;'>High Volatility</span>" if abs(price_change) > 15 else "<span style='background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 600; font-size: 0.7rem;'>Stable</span>"}
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 1rem;">
+                                <div>
+                                    <span class="metric-label" style="font-size:0.75rem;">Forecast (1W)</span>
+                                    <div style="font-size: 1.6rem; font-weight: 700; color: #60a5fa; margin-top: 0.2rem;">₹{pred_price:,.2f}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <span class="metric-label" style="font-size:0.75rem;">Expected Swing</span>
+                                    <div style="font-size: 1.25rem; font-weight: 600; color: {'#f87171' if price_change < 0 else '#34d399'}; margin-top: 0.2rem;">{price_change:+.2f}%</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 0.8rem; margin-bottom: 0.2rem;">
+                                <span class="metric-label" style="font-size:0.7rem;">Recent Price Sparkline</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        if len(crop_history) > 1:
+                            fig_spark = go.Figure()
+                            fig_spark.add_trace(go.Scatter(
+                                x=crop_history['date'],
+                                y=crop_history['modal_price'],
+                                mode='lines',
+                                line=dict(color=crop_color, width=2.5),
+                                hoverinfo='skip'
+                            ))
+                            fig_spark.update_layout(
+                                xaxis=dict(visible=False),
+                                yaxis=dict(visible=False),
+                                showlegend=False,
+                                margin=dict(l=0, r=0, t=0, b=0),
+                                height=45,
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)'
+                            )
+                            st.plotly_chart(fig_spark, use_container_width=True, config={'displayModeBar': False})
+                        else:
+                            st.markdown("<div style='height:45px; display:flex; align-items:center; color:#64748b; font-size:0.75rem;'>No trend history available.</div>", unsafe_allow_html=True)
+                            
+                        st.markdown(f"""
+                        <div class="glass-card-footer" style="background: rgba(30, 41, 59, 0.2); border-top: 1px solid rgba(255,255,255,0.03); padding: 0.5rem 1rem; margin-top: -0.2rem; font-size: 0.75rem; color: #94a3b8; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; display: flex; justify-content: space-between;">
+                            <span>Current: ₹{latest_price:,.2f}</span>
+                            <span>XGBoost v2.0</span>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;"></div>
+                        """, unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"Error: {e}")
 
 if __name__ == '__main__':
     main()
