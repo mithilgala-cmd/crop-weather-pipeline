@@ -9,6 +9,39 @@ from pathlib import Path
 # Load DuckDB path from env
 DUCKDB_PATH = os.getenv('DUCKDB_PATH', './data/crop_weather.duckdb')
 
+# Auto-seed sample database if empty or missing on app startup
+def check_and_seed_db():
+    db_file = Path(DUCKDB_PATH)
+    db_needs_seeding = not db_file.exists()
+    
+    if not db_needs_seeding:
+        try:
+            conn = duckdb.connect(database=str(db_file), read_only=True)
+            tables = [r[0] for r in conn.execute("SHOW TABLES").fetchall()]
+            if 'price_weather' not in tables:
+                db_needs_seeding = True
+            else:
+                row_count = conn.execute("SELECT COUNT(*) FROM price_weather").fetchone()[0]
+                if row_count == 0:
+                    db_needs_seeding = True
+            conn.close()
+        except Exception:
+            db_needs_seeding = True
+            
+    if db_needs_seeding:
+        try:
+            import sys
+            # Append scripts to system path to import seeding utility
+            scripts_dir = str(Path(__file__).parent.parent / "scripts")
+            if scripts_dir not in sys.path:
+                sys.path.append(scripts_dir)
+            from seed_sample_data import seed_data
+            seed_data(force=True)
+        except Exception as e:
+            st.error(f"Failed to auto-seed database: {e}")
+
+check_and_seed_db()
+
 @st.cache_resource
 def get_duckdb_conn():
     return duckdb.connect(database=DUCKDB_PATH, read_only=False)
