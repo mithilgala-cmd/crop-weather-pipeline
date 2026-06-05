@@ -1,10 +1,16 @@
 import os
+import sys
+from pathlib import Path
 import pandas as pd
 import duckdb
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from pathlib import Path
+
+# Add project root to sys.path to enable proper imports of modules like 'models'
+root_dir = str(Path(__file__).parent.parent)
+if root_dir not in sys.path:
+    sys.path.append(root_dir)
 
 # Load DuckDB path from env
 DUCKDB_PATH = os.getenv('DUCKDB_PATH', './data/crop_weather.duckdb')
