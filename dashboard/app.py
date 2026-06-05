@@ -48,7 +48,6 @@ def check_and_seed_db():
 
 check_and_seed_db()
 
-@st.cache_resource
 def get_duckdb_conn():
     return duckdb.connect(database=DUCKDB_PATH, read_only=False)
 
