@@ -452,17 +452,21 @@ def main():
                 title="Date"
             ),
             yaxis1=dict(
-                title="Modal Price (₹/Quintal)",
+                title=dict(
+                    text="Modal Price (₹/Quintal)",
+                    font=dict(color="#a78bfa")
+                ),
                 showgrid=True,
                 gridcolor='rgba(255,255,255,0.05)',
-                titlefont=dict(color="#a78bfa"),
                 tickfont=dict(color="#a78bfa")
             ),
             yaxis2=dict(
-                title="Precipitation (mm)",
+                title=dict(
+                    text="Precipitation (mm)",
+                    font=dict(color="#3b82f6")
+                ),
                 overlaying='y',
                 side='right',
-                titlefont=dict(color="#3b82f6"),
                 tickfont=dict(color="#3b82f6"),
                 showgrid=False
             ),
