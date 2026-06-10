@@ -88,36 +88,74 @@ def _build_context_summary(df: pd.DataFrame, commodity: str, district: str) -> s
 
 def _call_gemini(prompt: str, api_key: str) -> str:
     """
-    Calls the Gemini 1.5 Flash REST endpoint and returns the text response.
+    Calls Gemini API with fallbacks and retry logic to handle rate limits (429) and high demand (503).
     """
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-2.5-flash:generateContent?key={api_key}"
-    )
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.4,
-            "maxOutputTokens": 600,
-        },
-    }
-    try:
-        response = requests.post(url, json=payload, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        candidates = data.get("candidates", [])
-        if not candidates:
-            return "⚠️ The model returned no response. Please try again."
-        parts = candidates[0].get("content", {}).get("parts", [])
-        return " ".join(p.get("text", "") for p in parts).strip()
-    except requests.exceptions.Timeout:
-        return "⚠️ Request timed out. The Gemini API did not respond in 30 seconds."
-    except requests.exceptions.HTTPError as e:
-        status = getattr(e.response, "status_code", "?")
-        text = getattr(e.response, "text", "")
-        return f"⚠️ API error (HTTP {status}): {text[:300]}"
-    except Exception as e:
-        return f"⚠️ Unexpected error: {e}"
+    import time
+    
+    # List of models to try in sequence as fallbacks
+    models = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-2.0-flash", "gemini-flash-latest"]
+    max_retries = 3
+    base_delay = 1.0 # second
+    
+    last_error = ""
+    
+    for model in models:
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model}:generateContent?key={api_key}"
+        )
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.4,
+                "maxOutputTokens": 600,
+            },
+        }
+        
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(url, json=payload, timeout=30)
+                
+                # Handle rate-limiting or service unavailability with delay + retry
+                if response.status_code in (429, 503):
+                    try:
+                        err_msg = response.json().get("error", {}).get("message", response.text)
+                    except Exception:
+                        err_msg = response.text
+                    last_error = f"HTTP {response.status_code}: {err_msg}"
+                    
+                    delay = base_delay * (2 ** attempt)
+                    time.sleep(delay)
+                    continue
+                
+                response.raise_for_status()
+                data = response.json()
+                candidates = data.get("candidates", [])
+                if not candidates:
+                    return "⚠️ The model returned no response. Please try again."
+                parts = candidates[0].get("content", {}).get("parts", [])
+                return " ".join(p.get("text", "") for p in parts).strip()
+                
+            except requests.exceptions.Timeout:
+                last_error = "Request timed out."
+                continue
+            except requests.exceptions.HTTPError as e:
+                # If the model is not found (HTTP 404), switch to the next fallback model immediately
+                if e.response.status_code == 404:
+                    last_error = f"Model {model} not found (HTTP 404)."
+                    break
+                
+                try:
+                    err_msg = e.response.json().get("error", {}).get("message", e.response.text)
+                except Exception:
+                    err_msg = e.response.text
+                last_error = f"HTTP {e.response.status_code}: {err_msg}"
+                break
+            except Exception as e:
+                last_error = str(e)
+                break
+                
+    return f"⚠️ API error after trying fallback models: {last_error[:300]}"
 
 
 # ---------------------------------------------------------------------------
