@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Weather Volatility Dashboard</title>
+    <meta name="description" content="Correlate Indian Mandi crop price variations with daily daily rainfall and temperatures using XGBoost models and Gemini AI analyst.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Plotly.js for interactive premium charts -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>🔍 Control Center</h2>
+            </div>
+            
+            <div class="filter-section">
+                <label for="district-select" class="filter-label">📍 Districts</label>
+                <div class="custom-multiselect" id="district-multiselect">
+                    <div class="multiselect-selected" id="district-selected-display">Select Districts</div>
+                    <div class="multiselect-options" id="district-options-container">
+                        <!-- Options filled dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <label for="commodity-select" class="filter-label">📦 Commodities</label>
+                <div class="custom-multiselect" id="commodity-multiselect">
+                    <div class="multiselect-selected" id="commodity-selected-display">Select Commodities</div>
+                    <div class="multiselect-options" id="commodity-options-container">
+                        <!-- Options filled dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <label for="start-date" class="filter-label">📅 Start Date</label>
+                <input type="date" id="start-date" class="date-input">
+            </div>
+
+            <div class="filter-section">
+                <label for="end-date" class="filter-label">📅 End Date</label>
+                <input type="date" id="end-date" class="date-input">
+            </div>
+
+            <button id="apply-filters-btn" class="primary-btn apply-btn">Apply Filters</button>
+            
+            <div class="sidebar-footer">
+                <p>Crop Weather Volatility v1.0</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header Decorator -->
+            <header class="header-container">
+                <h1 class="gradient-text" id="main-title">🌾 Crop Weather Volatility Dashboard</h1>
+                <p class="subtitle">
+                    Correlating Indian Mandi price variations with daily rain and heat indexes using ML and dbt core.
+                </p>
+            </header>
+
+            <!-- Top Metric Cards Grid -->
+            <section class="metrics-grid" aria-label="Key Performance Indicators">
+                <div class="glass-card metric-card" id="metric-avg-price-card">
+                    <div class="metric-label">Avg Modal Price</div>
+                    <div class="metric-value" id="metric-avg-price">₹0.00</div>
+                </div>
+                <div class="glass-card metric-card" id="metric-max-vol-card">
+                    <div class="metric-label">Max Volatility</div>
+                    <div class="metric-value" id="metric-max-vol">0.000</div>
+                </div>
+                <div class="glass-card metric-card" id="metric-cum-rain-card">
+                    <div class="metric-label">Cumulative Rainfall</div>
+                    <div class="metric-value" id="metric-cum-rain">0.0 mm</div>
+                </div>
+                <div class="glass-card metric-card" id="metric-avg-temp-card">
+                    <div class="metric-label">Avg Max Temp</div>
+                    <div class="metric-value" id="metric-avg-temp">0.0°C</div>
+                </div>
+            </section>
+
+            <!-- Chart and Analysis Tabs -->
+            <section class="tabs-container">
+                <div class="tab-headers" role="tablist">
+                    <button class="tab-header active" id="tab-trends-btn" role="tab" aria-selected="true" aria-controls="tab-trends">📊 Price & Weather Trends</button>
+                    <button class="tab-header" id="tab-heatmap-btn" role="tab" aria-selected="false" aria-controls="tab-heatmap">🗺️ Volatility Heatmap & Alerts</button>
+                </div>
+
+                <div class="tab-panels">
+                    <!-- Trends Tab -->
+                    <div class="tab-panel active" id="tab-trends" role="tabpanel">
+                        <div class="glass-card chart-card">
+                            <div id="plotly-trends-chart" class="plotly-chart-canvas"></div>
+                        </div>
+                    </div>
+
+                    <!-- Heatmap and Alerts Tab -->
+                    <div class="tab-panel" id="tab-heatmap" role="tabpanel">
+                        <div class="heatmap-alerts-layout">
+                            <div class="glass-card heatmap-card">
+                                <h3 class="panel-subtitle">🔥 Volatility Heatmap</h3>
+                                <div id="plotly-heatmap-chart" class="plotly-chart-canvas"></div>
+                            </div>
+                            <div class="glass-card alerts-card">
+                                <h3 class="panel-subtitle">🚨 Real-time Volatility Alerts</h3>
+                                <div class="alerts-list" id="alerts-list-container">
+                                    <!-- Alerts populated dynamically -->
+                                    <div class="no-alerts-msg">🟢 No active volatility alerts in selected area.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI Market Analyst Section -->
+            <section class="analyst-section">
+                <div class="section-title-wrapper">
+                    <h3>🤖 AI Market Analyst</h3>
+                    <span class="badge">powered by Gemini</span>
+                </div>
+                
+                <div class="glass-card analyst-card">
+                    <p class="analyst-desc">
+                        Ask a natural-language question about crop prices and weather. Select a preset or type your own.
+                    </p>
+
+                    <div class="analyst-controls-row">
+                        <div class="control-col">
+                            <label for="analyst-presets" class="control-label">💡 Preset Questions</label>
+                            <select id="analyst-presets" class="form-select">
+                                <option value="">(Type your own below)</option>
+                                <!-- Presets filled dynamically based on selection -->
+                            </select>
+                        </div>
+                        <div class="control-col">
+                            <label for="analyst-crop-focus" class="control-label">🌾 Crop Focus</label>
+                            <select id="analyst-crop-focus" class="form-select">
+                                <!-- Crop list filled dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="custom-query-row">
+                        <label for="analyst-custom-query" class="control-label">✏️ Your Question</label>
+                        <div class="input-btn-group">
+                            <input type="text" id="analyst-custom-query" class="form-input" placeholder="e.g. Why is Tomato showing high volatility in Nashik this period?">
+                            <button id="run-analyst-btn" class="primary-btn run-btn">🔍 Analyze</button>
+                        </div>
+                    </div>
+
+                    <!-- Response Box -->
+                    <div id="analyst-response-box" class="analyst-response-container hidden">
+                        <div class="response-header">
+                            <span class="response-title-text">🤖 Analyst Response</span>
+                        </div>
+                        <div class="response-body" id="analyst-response-text">
+                            <!-- Answer text goes here -->
+                        </div>
+                        <div class="response-footer" id="analyst-response-meta">
+                            Powered by Gemini 2.5 Flash
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ML Prediction forecasting Section -->
+            <section class="prediction-section">
+                <div class="section-title-wrapper">
+                    <h3>🔮 Predictive AI Price Forecasting</h3>
+                </div>
+
+                <div class="prediction-header-controls">
+                    <label for="forecasting-district" class="control-label">📍 Select Target District for Forecasting Models</label>
+                    <select id="forecasting-district" class="form-select inline-select">
+                        <!-- Filled dynamically -->
+                    </select>
+                </div>
+
+                <!-- Grid for crop predictors -->
+                <div class="prediction-grid" id="prediction-cards-container">
+                    <!-- Cards created dynamically -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/dashboard.js"></script>
+</body>
+</html>

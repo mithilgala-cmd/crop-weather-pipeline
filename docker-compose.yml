@@ -68,18 +68,22 @@ services:
           --email admin@example.com \
           --password admin
 
-  streamlit:
+  dashboard:
     build:
       context: .
       dockerfile: ./dashboard/Dockerfile
     ports:
-      - "8501:8501"
+      - "8000:8000"
     environment:
       - DUCKDB_PATH=/app/data/crop_weather.duckdb
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
       - ./data:/app/data
       - ./dashboard:/app/dashboard
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
       - ./models:/app/models
+      - ./scripts:/app/scripts
+      - ./db:/app/db
     depends_on:
       - airflow-webserver
