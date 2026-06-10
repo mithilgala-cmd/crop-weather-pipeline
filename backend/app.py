@@ -22,7 +22,28 @@ if str(dashboard_dir) not in sys.path:
 
 load_dotenv(dotenv_path=root_dir / ".env")
 
-DUCKDB_PATH = os.getenv('DUCKDB_PATH', str(root_dir / 'data' / 'crop_weather.duckdb'))
+# Detect Vercel serverless runs
+IS_VERCEL = os.environ.get("VERCEL") == "1"
+
+if IS_VERCEL:
+    DUCKDB_PATH = "/tmp/crop_weather.duckdb"
+    MODELS_DIR = Path("/tmp/models/saved")
+    
+    # Copy pre-seeded database to writable /tmp
+    src_db = root_dir / "data" / "crop_weather.duckdb"
+    dest_db = Path(DUCKDB_PATH)
+    if src_db.exists() and not dest_db.exists():
+        try:
+            import shutil
+            dest_db.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(str(src_db), str(dest_db))
+            print("Pre-seeded database copied to /tmp successfully.")
+        except Exception as e:
+            print(f"Failed to copy database to /tmp: {e}")
+else:
+    DUCKDB_PATH = os.getenv('DUCKDB_PATH', str(root_dir / 'data' / 'crop_weather.duckdb'))
+    MODELS_DIR = root_dir / "models" / "saved"
+
 
 # Auto-seed sample database if empty or missing
 def check_and_seed_db():
@@ -241,8 +262,8 @@ def predict_price(req: ModelTaskRequest):
     crop = req.commodity
     district = req.district
     
-    model_filename = f"models/saved/{crop.lower().replace(' ', '_')}_{district.lower().replace(' ', '_')}.pkl"
-    model_path = root_dir / model_filename
+    model_filename = f"{crop.lower().replace(' ', '_')}_{district.lower().replace(' ', '_')}.pkl"
+    model_path = MODELS_DIR / model_filename
     
     if not model_path.exists():
         return {
@@ -252,7 +273,30 @@ def predict_price(req: ModelTaskRequest):
         
     try:
         predictor = PricePredictor()
-        predictor.load(str(model_path))
+        try:
+            predictor.load(str(model_path))
+        except (ModuleNotFoundError, Exception):
+            # Auto-train fallback model on-the-fly if loading failed (e.g. missing xgboost on Vercel)
+            con = get_duckdb_conn()
+            df_train = con.execute("""
+                SELECT * FROM price_weather 
+                WHERE commodity = ? AND district = ?
+                ORDER BY date ASC
+            """, [crop, district]).fetchdf()
+            con.close()
+            
+            if len(df_train) < 3:
+                con = get_duckdb_conn()
+                df_train = con.execute("""
+                    SELECT * FROM price_weather 
+                    WHERE commodity = ?
+                    ORDER BY date ASC
+                """, [crop]).fetchdf()
+                con.close()
+                
+            predictor.train(df_train, crop, district)
+            os.makedirs(str(model_path.parent), exist_ok=True)
+            predictor.save(str(model_path))
         
         # Fetch the latest record for this combo to serve as predictor input
         con = get_duckdb_conn()
@@ -336,15 +380,15 @@ def train_model(req: ModelTaskRequest):
         predictor = PricePredictor()
         predictor.train(df_train, crop, district)
         
-        model_filename = f"models/saved/{crop.lower().replace(' ', '_')}_{district.lower().replace(' ', '_')}.pkl"
-        model_path = root_dir / model_filename
+        model_filename = f"{crop.lower().replace(' ', '_')}_{district.lower().replace(' ', '_')}.pkl"
+        model_path = MODELS_DIR / model_filename
         
         os.makedirs(str(model_path.parent), exist_ok=True)
         predictor.save(str(model_path))
         
         return {
             "success": True,
-            "message": f"Successfully trained and saved XGBoost model for {crop} in {district}."
+            "message": f"Successfully trained and saved model for {crop} in {district}."
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Model training failed: {str(e)}")

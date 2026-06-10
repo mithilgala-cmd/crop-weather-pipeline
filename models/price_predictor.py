@@ -3,8 +3,14 @@ import pickle
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from xgboost import XGBRegressor
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+
+# Optional ML imports to support lightweight serverless deployments (like Vercel)
+try:
+    from xgboost import XGBRegressor
+    from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+    HAS_ML = True
+except ImportError:
+    HAS_ML = False
 
 class PricePredictor:
     def __init__(self):
@@ -84,7 +90,7 @@ class PricePredictor:
             else:
                 df["lag_14_price"] = 0.0
 
-        # Fill lag NaNs safely using modern pandas methods (no method="ffill")
+        # Fill lag NaNs safely using modern pandas methods
         df["lag_7_price"] = df["lag_7_price"].ffill().bfill().fillna(0.0)
         df["lag_14_price"] = df["lag_14_price"].ffill().bfill().fillna(0.0)
         
@@ -107,31 +113,66 @@ class PricePredictor:
         if data.empty:
             raise ValueError(f"No training data found for {commodity} and {district}")
             
-        X = self._prepare_features(data)
-        y = data["modal_price"]
-        self.model = XGBRegressor(objective="reg:squarederror", n_estimators=200, learning_rate=0.05)
-        self.model.fit(X, y)
-        preds = self.model.predict(X)
-        
-        rmse = float(mean_squared_error(y, preds) ** 0.5)
-        mae = float(mean_absolute_error(y, preds))
-        r2 = float(r2_score(y, preds))
-        
-        print("Training metrics:")
-        print(f"RMSE: {rmse:.4f}")
-        print(f"MAE: {mae:.4f}")
-        print(f"R^2: {r2:.4f}")
+        if HAS_ML:
+            X = self._prepare_features(data)
+            y = data["modal_price"]
+            self.model = XGBRegressor(objective="reg:squarederror", n_estimators=200, learning_rate=0.05)
+            self.model.fit(X, y)
+            preds = self.model.predict(X)
+            
+            rmse = float(mean_squared_error(y, preds) ** 0.5)
+            mae = float(mean_absolute_error(y, preds))
+            r2 = float(r2_score(y, preds))
+            
+            print("Training metrics (XGBoost):")
+            print(f"RMSE: {rmse:.4f}")
+            print(f"MAE: {mae:.4f}")
+            print(f"R^2: {r2:.4f}")
+        else:
+            # Fallback simple linear regression using numpy
+            y = data["modal_price"].values
+            x = np.arange(len(y))
+            if len(y) > 1:
+                slope, intercept = np.polyfit(x, y, 1)
+            else:
+                slope, intercept = 0.0, float(y[0]) if len(y) > 0 else 100.0
+                
+            self.model = {
+                "is_fallback": True,
+                "slope": float(slope),
+                "intercept": float(intercept),
+                "latest_price": float(y[-1]) if len(y) > 0 else 100.0
+            }
+            print("Training metrics (Fallback Simple Linear Regression):")
+            print(f"Slope: {slope:.4f}, Intercept: {intercept:.4f}")
 
     def predict_next_week(self, latest_row: dict) -> dict:
         if self.model is None:
             raise ValueError("Model not trained.")
-        df = pd.DataFrame([latest_row])
-        X = self._prepare_features(df)
-        pred = self.model.predict(X)[0]
-        return {
-            "predicted_modal_price": float(pred),
-            "predicted_price": float(pred)
-        }
+            
+        if isinstance(self.model, dict) and self.model.get("is_fallback"):
+            # Fallback linear forecast
+            latest_price = latest_row.get("modal_price")
+            if latest_price is None:
+                latest_price = self.model.get("latest_price", 100.0)
+            
+            slope = self.model.get("slope", 0.0)
+            pred = float(latest_price) + (slope * 7)
+            # Ensure price doesn't drop below 40% of latest
+            pred = max(pred, float(latest_price) * 0.4)
+            return {
+                "predicted_modal_price": float(pred),
+                "predicted_price": float(pred)
+            }
+        else:
+            # Standard XGBoost inference
+            df = pd.DataFrame([latest_row])
+            X = self._prepare_features(df)
+            pred = self.model.predict(X)[0]
+            return {
+                "predicted_modal_price": float(pred),
+                "predicted_price": float(pred)
+            }
 
     def save(self, path: str):
         Path(path).parent.mkdir(parents=True, exist_ok=True)

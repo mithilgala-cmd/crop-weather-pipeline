@@ -1,0 +1,14 @@
+.venv
+venv
+.git
+.github
+.devcontainer
+.pytest_cache
+dags
+dbt_project/target
+dbt_project/logs
+dbt_project/dbt_packages
+tests/__pycache__
+backend/__pycache__
+models/__pycache__
+dashboard/__pycache__
