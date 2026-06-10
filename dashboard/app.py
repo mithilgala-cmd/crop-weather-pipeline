@@ -1,5 +1,6 @@
 import os
 import sys
+import html
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -637,7 +638,7 @@ def main():
                             🤖 Analyst Response
                         </div>
                         <div style="color:#e2e8f0; font-size:1rem; line-height:1.7;">
-                            {answer.replace(chr(10), '<br>')}
+                            {html.escape(answer).replace(chr(10), '<br>')}
                         </div>
                         <div style="font-size:0.75rem; color:#475569; margin-top:1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top:0.6rem;">
                             Powered by Gemini 1.5 Flash &nbsp;·&nbsp; Context: {analyst_target_crop} in {analyst_district}
