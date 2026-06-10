@@ -10,7 +10,7 @@ An end-to-end data engineering, predictive analytics, and real-time visualizatio
 * **🥇 dbt Medallion Architecture** — Structured data modeling (Bronze → Silver → Gold) using dbt Core and an embedded **DuckDB** analytical query engine.
 * **📈 Volatility Alerting System** — Automatically calculates price volatility indices and routes high-risk market alerts (>0.3 threshold) to the visualization layer.
 * **🧠 Predictive XGBoost Engine** — Forecasts next-week crop prices using day properties, seasonal precipitation, max/min temperatures, and 7/14-day price lags.
-* **🤖 Gemini-Powered Market Analyst** — Grounded natural-language Q&A using Gemini 1.5 Flash to explain price volatility and weather impacts based on live database contexts.
+* **🤖 Gemini-Powered Market Analyst** — Grounded natural-language Q&A using Gemini 2.5 Flash to explain price volatility and weather impacts based on live database contexts.
 * **💎 Dark-Glass Streamlit Dashboard** — An interactive executive interface with smooth HSL gradients, Plotly price overlays, volatility heatmap grids, and an **on-the-fly model training terminal**.
 * **🧪 100% Isolated Test Coverage** — Resiliency, timeout, and failure tests under simulated network disruptions (HTTP 429/504) via an embedded mock API server.
 
@@ -140,7 +140,7 @@ Models are generated and saved dynamically as `.pkl` files inside [models/saved/
 
 ## 🤖 Gemini-Powered Market Analyst
 
-The interactive dashboard features an **AI Market Analyst** module ([analyst.py](file:///d:/crop-weather-pipeline/dashboard/analyst.py)) powered by the **Gemini 1.5 Flash API**:
+The interactive dashboard features an **AI Market Analyst** module ([analyst.py](file:///d:/crop-weather-pipeline/dashboard/analyst.py)) powered by the **Gemini 2.5 Flash API**:
 - **Grounding Context**: Automatically extracts historical trends, rainfall aggregates, temperature variations, and volatility scores for the selected commodity & district.
 - **Token Optimization**: Dynamically packs the dataset into a compact JSON context block to remain highly cost-efficient and fit within strict token boundaries.
 - **Specialized System Prompting**: Instructs the model to act as an agricultural supply chain specialist, providing concise, data-driven, and farmer-friendly advice.
@@ -231,7 +231,7 @@ During the system integration and live testing phases, several production-grade 
 
 * **Built an End-to-End ELT Pipeline** ingesting daily mandi market crop prices + historical weather indices across 8 high-yield districts, orchestrated via scheduled daily Airflow DAG workflows.
 * **Structured a dbt Medallion Architecture** (Bronze → Silver → Gold) directly on top of an embedded **DuckDB** analytical query engine, optimizing analytical joins and partitioning strategy.
-* **Integrated Gemini 1.5 Flash API** to build a grounded natural-language market analyst, converting database records into token-optimized contextual blocks to answer agricultural supply-chain and price volatility queries.
+* **Integrated Gemini 2.5 Flash API** to build a grounded natural-language market analyst, converting database records into token-optimized contextual blocks to answer agricultural supply-chain and price volatility queries.
 * **Trained an XGBoost Regressor Model** achieving high accuracy on next-week agricultural price thresholds utilizing historical price lags, seasonal precipitation, and district temperature inputs.
 * **Developed a High-Fidelity Streamlit Dashboard** utilizing glassmorphism visual styles, HSL custom color spaces, dual-axis charts, and an interactive **on-the-fly model training terminal** for custom district/crop forecasting.
 * **Designed a Resilient API Mocking Server** simulating HTTP 429 (Rate Limits) and HTTP 504 (Gateways) to validate and ensure a 100% pipeline recovery rate under severe network constraints.
