@@ -421,9 +421,9 @@ def call_analyst(req: AnalystRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gemini analyst failed to answer: {str(e)}")
 
-# Mount static files at the root route last to avoid shadowing API endpoints
-frontend_dir = root_dir / "frontend"
-if not frontend_dir.exists():
-    os.makedirs(str(frontend_dir), exist_ok=True)
-
-app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="static")
+# Mount static files at the root route last to avoid shadowing API endpoints only if not on Vercel
+if not IS_VERCEL:
+    frontend_dir = root_dir / "frontend"
+    if not frontend_dir.exists():
+        os.makedirs(str(frontend_dir), exist_ok=True)
+    app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="static")
