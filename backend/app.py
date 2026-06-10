@@ -27,6 +27,7 @@ IS_VERCEL = os.environ.get("VERCEL") == "1"
 
 if IS_VERCEL:
     DUCKDB_PATH = "/tmp/crop_weather.duckdb"
+    os.environ['DUCKDB_PATH'] = DUCKDB_PATH
     MODELS_DIR = Path("/tmp/models/saved")
     
     # Copy pre-seeded database to writable /tmp
@@ -42,6 +43,7 @@ if IS_VERCEL:
             print(f"Failed to copy database to /tmp: {e}")
 else:
     DUCKDB_PATH = os.getenv('DUCKDB_PATH', str(root_dir / 'data' / 'crop_weather.duckdb'))
+    os.environ['DUCKDB_PATH'] = DUCKDB_PATH
     MODELS_DIR = root_dir / "models" / "saved"
 
 

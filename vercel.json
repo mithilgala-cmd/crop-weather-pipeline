@@ -23,8 +23,9 @@
   "functions": {
     "backend/app.py": {
       "includeFiles": [
-        "data/crop_weather.duckdb",
-        "dashboard/analyst.py"
+        "dashboard/analyst.py",
+        "scripts/seed_sample_data.py",
+        "db/schema.sql"
       ]
     }
   }
