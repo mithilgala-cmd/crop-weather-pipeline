@@ -92,7 +92,7 @@ def _call_gemini(prompt: str, api_key: str) -> str:
     """
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-1.5-flash:generateContent?key={api_key}"
+        f"gemini-2.5-flash:generateContent?key={api_key}"
     )
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
