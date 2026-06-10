@@ -68,14 +68,20 @@ def check_and_seed_db():
             
     if db_needs_seeding:
         try:
-            scripts_dir = root_dir / "scripts"
-            if str(scripts_dir) not in sys.path:
-                sys.path.append(str(scripts_dir))
-            from seed_sample_data import seed_data
+            from backend.seed_sample_data import seed_data
             seed_data(force=True)
             print("Database successfully seeded.")
         except Exception as e:
-            print(f"Failed to auto-seed database: {e}")
+            # Fallback to local script import if backend folder is not packages
+            try:
+                scripts_dir = root_dir / "scripts"
+                if str(scripts_dir) not in sys.path:
+                    sys.path.append(str(scripts_dir))
+                from seed_sample_data import seed_data
+                seed_data(force=True)
+                print("Database successfully seeded via local scripts.")
+            except Exception as e2:
+                print(f"Failed to auto-seed database: {e2}")
 
 check_and_seed_db()
 
@@ -398,7 +404,10 @@ def train_model(req: ModelTaskRequest):
 @app.post("/api/analyst")
 def call_analyst(req: AnalystRequest):
     """Executes Gemini agricultural Q&A over the currently filtered context."""
-    from analyst import ask_analyst
+    try:
+        from backend.analyst import ask_analyst
+    except ImportError:
+        from analyst import ask_analyst
     
     try:
         # Load filtered dataframe matching user filters

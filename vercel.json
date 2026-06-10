@@ -19,14 +19,5 @@
       "src": "/(.*)",
       "dest": "frontend/$1"
     }
-  ],
-  "functions": {
-    "backend/app.py": {
-      "includeFiles": [
-        "dashboard/analyst.py",
-        "scripts/seed_sample_data.py",
-        "db/schema.sql"
-      ]
-    }
-  }
+  ]
 }
