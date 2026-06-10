@@ -19,5 +19,13 @@
       "src": "/(.*)",
       "dest": "frontend/$1"
     }
-  ]
+  ],
+  "functions": {
+    "backend/app.py": {
+      "includeFiles": [
+        "data/crop_weather.duckdb",
+        "dashboard/analyst.py"
+      ]
+    }
+  }
 }
