@@ -7,6 +7,13 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 
+# LLM Market Analyst – Gemini-powered natural language Q&A
+try:
+    from analyst import ask_analyst, get_preset_questions
+    _ANALYST_AVAILABLE = True
+except ImportError:
+    _ANALYST_AVAILABLE = False
+
 # Add project root to sys.path to enable proper imports of modules like 'models'
 root_dir = str(Path(__file__).parent.parent)
 if root_dir not in sys.path:
@@ -545,6 +552,90 @@ def main():
                         </div>
                         <div style="text-align: right; font-size: 0.85rem; color: #94a3b8;">
                             💧 {row['precipitation_mm']:.1f} mm Rain | 📈 Volatility: <b>{row['volatility_score']:.3f}</b>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    # ── LLM Market Analyst Section ────────────────────────────────────────────
+    st.markdown("""
+    <h3 style='margin-top: 2.5rem; font-weight: 600;'>
+        🤖 AI Market Analyst
+        <span style='font-size:0.85rem; font-weight:400; color:#94a3b8; margin-left:0.6rem;'>powered by Gemini</span>
+    </h3>
+    """, unsafe_allow_html=True)
+
+    if not _ANALYST_AVAILABLE:
+        st.warning("analyst.py not found — analyst module unavailable.")
+    else:
+        analyst_crop = selected_commodities[0] if selected_commodities else "Tomato"
+        analyst_district = selected_districts[0] if selected_districts else "Nashik"
+
+        with st.container():
+            st.markdown("""
+            <div class="glass-card" style="border-left: 4px solid #60a5fa; box-shadow: 0 8px 32px 0 rgba(96,165,250,0.10);">
+                <div style="font-size:0.95rem; color:#94a3b8; margin-bottom:1rem;">
+                    Ask a natural-language question about crop prices and weather. Select a preset or type your own.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            preset_qs = get_preset_questions(analyst_crop, analyst_district)
+
+            col_q1, col_q2 = st.columns([2, 1])
+            with col_q1:
+                preset_choice = st.selectbox(
+                    "💡 Preset Questions",
+                    options=["(Type your own below)"] + preset_qs,
+                    key="analyst_preset",
+                    help="Quick-access analyst questions pre-filled with your current crop & district."
+                )
+            with col_q2:
+                analyst_target_crop = st.selectbox(
+                    "🌾 Crop Focus",
+                    options=selected_commodities if selected_commodities else ["Tomato"],
+                    index=0,
+                    key="analyst_crop_select"
+                )
+
+            custom_q = st.text_input(
+                "✏️ Your Question",
+                value="" if preset_choice.startswith("(") else preset_choice,
+                placeholder=f"e.g. Why is {analyst_crop} volatile in {analyst_district} this week?",
+                key="analyst_custom_q"
+            )
+
+            final_question = custom_q.strip() or ("" if preset_choice.startswith("(") else preset_choice)
+
+            if st.button("🔍 Analyze", key="analyst_run"):
+                if not final_question:
+                    st.warning("Please enter or select a question first.")
+                else:
+                    with st.spinner("Consulting the AI market analyst…"):
+                        answer = ask_analyst(
+                            df=filtered_df,
+                            commodity=analyst_target_crop,
+                            district=analyst_district,
+                            question=final_question,
+                        )
+                    st.markdown(f"""
+                    <div style="
+                        background: rgba(15, 23, 42, 0.65);
+                        border: 1px solid rgba(96, 165, 250, 0.25);
+                        border-left: 4px solid #60a5fa;
+                        border-radius: 14px;
+                        padding: 1.4rem 1.6rem;
+                        margin-top: 1rem;
+                        backdrop-filter: blur(12px);
+                        box-shadow: 0 8px 32px rgba(96,165,250,0.12);
+                    ">
+                        <div style="font-size:0.8rem; color:#60a5fa; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.7rem;">
+                            🤖 Analyst Response
+                        </div>
+                        <div style="color:#e2e8f0; font-size:1rem; line-height:1.7;">
+                            {answer.replace(chr(10), '<br>')}
+                        </div>
+                        <div style="font-size:0.75rem; color:#475569; margin-top:1rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top:0.6rem;">
+                            Powered by Gemini 1.5 Flash &nbsp;·&nbsp; Context: {analyst_target_crop} in {analyst_district}
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
