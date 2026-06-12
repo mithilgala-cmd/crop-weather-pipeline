@@ -5,29 +5,11 @@ import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from config.constants import DISTRICTS, SEED_COMMODITY_PROFILES
+
 # Load config from env or defaults
 DUCKDB_PATH = os.getenv('DUCKDB_PATH', './data/crop_weather.duckdb')
-
-DISTRICTS = [
-    {"name": "Nashik",    "state": "Maharashtra",     "base_temp": 30.0, "rain_prob": 0.15},
-    {"name": "Agra",      "state": "Uttar Pradesh",   "base_temp": 32.0, "rain_prob": 0.10},
-    {"name": "Ludhiana",  "state": "Punjab",          "base_temp": 28.0, "rain_prob": 0.12},
-    {"name": "Guntur",    "state": "Andhra Pradesh",  "base_temp": 34.0, "rain_prob": 0.20},
-    {"name": "Indore",    "state": "Madhya Pradesh",  "base_temp": 31.0, "rain_prob": 0.14},
-    {"name": "Jaipur",    "state": "Rajasthan",       "base_temp": 35.0, "rain_prob": 0.08},
-    {"name": "Patna",     "state": "Bihar",           "base_temp": 29.0, "rain_prob": 0.16},
-    {"name": "Bhopal",    "state": "Madhya Pradesh",  "base_temp": 31.0, "rain_prob": 0.14},
-]
-
-COMMODITIES = {
-    "Tomato":   {"base_price": 1500.0, "volatility": 0.25},
-    "Onion":    {"base_price": 1800.0, "volatility": 0.20},
-    "Potato":   {"base_price": 1200.0, "volatility": 0.12},
-    "Wheat":    {"base_price": 2300.0, "volatility": 0.06},
-    "Rice":     {"base_price": 3100.0, "volatility": 0.05},
-    "Maize":    {"base_price": 1900.0, "volatility": 0.08},
-    "Soybean":  {"base_price": 4600.0, "volatility": 0.07}
-}
+ROOT_DIR = Path(__file__).parent.parent.resolve()
 
 def seed_data(force=False):
     db_path = Path(DUCKDB_PATH)
@@ -49,7 +31,7 @@ def seed_data(force=False):
             pass
     
     # Initialize schema
-    schema_path = Path("db/schema.sql")
+    schema_path = ROOT_DIR / "db" / "schema.sql"
     if schema_path.exists():
         print("Initializing tables from db/schema.sql...")
         with open(schema_path, "r") as sf:
@@ -107,7 +89,7 @@ def seed_data(force=False):
             temp_min = base_t - 8.0 + np.random.normal(0, 1.2)
             windspeed = np.random.uniform(5.0, 25.0)
             
-            for commodity, crop_info in COMMODITIES.items():
+            for commodity, crop_info in SEED_COMMODITY_PROFILES.items():
                 # Base price calculation with seasonal cycles and district offsets
                 dist_offset = 0.90 if dist_name == "Nashik" and commodity == "Onion" else 1.0
                 dist_offset = 0.88 if dist_name == "Agra" and commodity == "Potato" else dist_offset

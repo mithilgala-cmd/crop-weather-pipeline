@@ -3,17 +3,7 @@ import json
 import requests
 from pathlib import Path
 
-# List of districts with coordinates
-DISTRICTS = [
-    {"name": "Nashik", "lat": 20.0059, "lon": 73.7898, "state": "Maharashtra"},
-    {"name": "Agra", "lat": 27.1767, "lon": 78.0081, "state": "Uttar Pradesh"},
-    {"name": "Ludhiana", "lat": 30.9010, "lon": 75.8573, "state": "Punjab"},
-    {"name": "Guntur", "lat": 16.3067, "lon": 80.4365, "state": "Andhra Pradesh"},
-    {"name": "Indore", "lat": 22.7196, "lon": 75.8577, "state": "Madhya Pradesh"},
-    {"name": "Jaipur", "lat": 26.9124, "lon": 75.7873, "state": "Rajasthan"},
-    {"name": "Patna", "lat": 25.5941, "lon": 85.1376, "state": "Bihar"},
-    {"name": "Bhopal", "lat": 23.2599, "lon": 77.4126, "state": "Madhya Pradesh"},
-]
+from config.constants import DISTRICTS
 
 RAW_DIR = os.getenv("RAW_DIR", "./data/raw")
 

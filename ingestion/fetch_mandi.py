@@ -4,10 +4,11 @@ import requests
 from datetime import datetime
 from pathlib import Path
 
+from config.constants import COMMODITIES
+
 RAW_DIR = os.getenv('RAW_DIR', './data/raw')
 API_URL = 'https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070'
 API_KEY = os.getenv('DATA_GOV_API_KEY')
-COMMODITIES = ["Tomato", "Onion", "Potato", "Wheat", "Rice", "Maize", "Soybean"]
 
 def fetch_mandi_prices(date: str) -> list[dict]:
     """Fetch mandi price data for a given date.

@@ -8,6 +8,7 @@ x-airflow-common: &airflow-common
     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
     - AIRFLOW__CORE__FERNET_KEY=JIod7YC0sLqZxbTggGoTsxB7b2mnfdnNefnw4S65swc=
     - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    - PYTHONPATH=/opt/airflow
     - DATA_GOV_API_KEY=${DATA_GOV_API_KEY}
     - AIRFLOW_HOME=/opt/airflow
     - RAW_DIR=/opt/airflow/data/raw
@@ -20,6 +21,9 @@ x-airflow-common: &airflow-common
     - ./transform:/opt/airflow/transform
     - ./db:/opt/airflow/db
     - ./models:/opt/airflow/models
+    - ./config:/opt/airflow/config
+    - ./scripts:/opt/airflow/scripts
+    - ./dbt_project:/opt/airflow/dbt_project
   depends_on:
     postgres:
       condition: service_healthy

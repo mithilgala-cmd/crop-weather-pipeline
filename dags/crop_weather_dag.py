@@ -4,33 +4,24 @@ DAG: crop_weather_pipeline
 Schedule: Daily at 6 AM IST
 """
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
-from airflow.utils.dates import days_ago
-from datetime import datetime, timedelta
-import requests
-import pandas as pd
-import json
 import os
+import sys
+from datetime import timedelta
 
-# ──────────────────────────────────────────
-# CONFIG
-# ──────────────────────────────────────────
+import pandas as pd
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from airflow.operators.python import PythonOperator
+from airflow.utils.dates import days_ago
 
-RAW_DIR = "/opt/airflow/data/raw"
-PROCESSED_DIR = "/opt/airflow/data/processed"
+# Ensure project modules are importable (local dev + Docker via PYTHONPATH)
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
-COMMODITIES = ["Tomato", "Onion", "Potato", "Wheat", "Rice"]
-
-# Districts: (name, lat, lon, state)
-DISTRICTS = [
-    ("Nashik",      20.0059, 73.7898, "Maharashtra"),
-    ("Agra",        27.1767, 78.0081, "Uttar Pradesh"),
-    ("Ludhiana",    30.9010, 75.8573, "Punjab"),
-    ("Guntur",      16.3067, 80.4365, "Andhra Pradesh"),
-    ("Indore",      22.7196, 75.8577, "Madhya Pradesh"),
-]
+RAW_DIR = os.getenv("RAW_DIR", "/opt/airflow/data/raw")
+PROCESSED_DIR = os.getenv("PROCESSED_DIR", "/opt/airflow/data/processed")
+DUCKDB_PATH = os.getenv("DUCKDB_PATH", "/opt/airflow/data/crop_weather.duckdb")
 
 DEFAULT_ARGS = {
     "owner": "your_name",
@@ -41,10 +32,6 @@ DEFAULT_ARGS = {
 }
 
 
-# ──────────────────────────────────────────
-# TASK FUNCTIONS
-# ──────────────────────────────────────────
-
 def create_dirs():
     """Create raw/processed dirs if not exist."""
     os.makedirs(RAW_DIR, exist_ok=True)
@@ -53,215 +40,92 @@ def create_dirs():
 
 
 def fetch_mandi_prices(**context):
-    """
-    Fetch mandi prices from data.gov.in API.
-    Replace API_KEY with your key from https://data.gov.in
-    Free registration required.
-    """
-    execution_date = context["ds"]  # YYYY-MM-DD
-    API_KEY = os.getenv("DATA_GOV_API_KEY", "YOUR_API_KEY_HERE")
-    
-    records = []
+    """Fetch mandi prices via ingestion module."""
+    from ingestion.fetch_mandi import fetch_mandi_prices as fetch_mandi
 
-    for commodity in COMMODITIES:
-        url = "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070"
-        params = {
-            "api-key": API_KEY,
-            "format": "json",
-            "limit": 100,
-            "filters[commodity]": commodity,
-        }
-        try:
-            response = requests.get(url, params=params, timeout=30)
-            response.raise_for_status()
-            data = response.json()
-            for record in data.get("records", []):
-                records.append({
-                    "date": record.get("arrival_date", execution_date),
-                    "commodity": record.get("commodity"),
-                    "district": record.get("district"),
-                    "state": record.get("state"),
-                    "market": record.get("market"),
-                    "min_price": record.get("min_price"),
-                    "max_price": record.get("max_price"),
-                    "modal_price": record.get("modal_price"),
-                })
-        except Exception as e:
-            print(f"Failed fetching {commodity}: {e}")
-
-    # Save raw
-    out_path = f"{RAW_DIR}/mandi_{execution_date}.json"
-    with open(out_path, "w") as f:
-        json.dump(records, f, indent=2)
-    print(f"Saved {len(records)} mandi records to {out_path}")
+    execution_date = context["ds"]
+    records = fetch_mandi(execution_date)
+    print(f"Fetched {len(records)} mandi records for {execution_date}")
 
 
 def fetch_weather(**context):
-    """
-    Fetch weather from Open-Meteo API. Free, no API key needed.
-    Docs: https://open-meteo.com/en/docs
-    """
+    """Fetch weather via ingestion module."""
+    from ingestion.fetch_weather import fetch_weather as fetch_weather_data
+
     execution_date = context["ds"]
-    all_weather = []
-
-    for district_name, lat, lon, state in DISTRICTS:
-        url = "https://api.open-meteo.com/v1/forecast"
-        params = {
-            "latitude": lat,
-            "longitude": lon,
-            "daily": "precipitation_sum,temperature_2m_max,temperature_2m_min",
-            "start_date": execution_date,
-            "end_date": execution_date,
-            "timezone": "Asia/Kolkata",
-        }
-        try:
-            response = requests.get(url, params=params, timeout=30)
-            response.raise_for_status()
-            data = response.json()
-            daily = data.get("daily", {})
-            all_weather.append({
-                "date": execution_date,
-                "district": district_name,
-                "state": state,
-                "latitude": lat,
-                "longitude": lon,
-                "precipitation_mm": daily.get("precipitation_sum", [None])[0],
-                "temp_max_c": daily.get("temperature_2m_max", [None])[0],
-                "temp_min_c": daily.get("temperature_2m_min", [None])[0],
-            })
-        except Exception as e:
-            print(f"Failed fetching weather for {district_name}: {e}")
-
-    out_path = f"{RAW_DIR}/weather_{execution_date}.json"
-    with open(out_path, "w") as f:
-        json.dump(all_weather, f, indent=2)
-    print(f"Saved weather for {len(all_weather)} districts to {out_path}")
+    results = fetch_weather_data(execution_date)
+    print(f"Fetched weather for {len(results)} districts on {execution_date}")
 
 
 def transform_and_join(**context):
-    """
-    Clean + join mandi prices with weather data.
-    Output: processed/joined_YYYY-MM-DD.parquet
-    """
-    execution_date = context["ds"]
+    """Clean, join, and compute volatility using transform modules."""
+    from transform.clean import clean_mandi, clean_weather
+    from transform.join import join_mandi_weather
+    from transform.volatility import compute_volatility
 
-    mandi_path = f"{RAW_DIR}/mandi_{execution_date}.json"
-    weather_path = f"{RAW_DIR}/weather_{execution_date}.json"
+    execution_date = context["ds"]
+    mandi_path = os.path.join(RAW_DIR, f"mandi_{execution_date}.json")
+    weather_path = os.path.join(RAW_DIR, f"weather_{execution_date}.json")
 
     if not os.path.exists(mandi_path) or not os.path.exists(weather_path):
         print("Raw files missing — skipping transform.")
         return
 
-    # Load
     mandi_df = pd.read_json(mandi_path)
     weather_df = pd.read_json(weather_path)
 
-    # Clean mandi
-    mandi_df["modal_price"] = pd.to_numeric(mandi_df["modal_price"], errors="coerce")
-    mandi_df["district"] = mandi_df["district"].str.strip().str.title()
-    mandi_df.dropna(subset=["modal_price"], inplace=True)
+    mandi_df = clean_mandi(mandi_df)
+    weather_df = clean_weather(weather_df)
+    joined = join_mandi_weather(mandi_df, weather_df)
+    joined = compute_volatility(joined)
 
-    # Clean weather
-    weather_df["district"] = weather_df["district"].str.strip().str.title()
-
-    # Join on district + date
-    joined = mandi_df.merge(
-        weather_df[["date", "district", "precipitation_mm", "temp_max_c", "temp_min_c"]],
-        on=["date", "district"],
-        how="left"
-    )
-
-    # Volatility score: (max_price - min_price) / modal_price
-    joined["volatility_score"] = (
-        (pd.to_numeric(joined["max_price"], errors="coerce") -
-         pd.to_numeric(joined["min_price"], errors="coerce")) /
-        joined["modal_price"]
-    ).round(4)
-
-    out_path = f"{PROCESSED_DIR}/joined_{execution_date}.parquet"
+    out_path = os.path.join(PROCESSED_DIR, f"joined_{execution_date}.parquet")
     joined.to_parquet(out_path, index=False)
     print(f"Joined {len(joined)} rows → {out_path}")
 
 
 def load_to_duckdb(**context):
-    """
-    Load processed parquet into DuckDB.
-    Install: pip install duckdb
-    """
-    import duckdb
+    """Load processed parquet into DuckDB via db.loader."""
+    from db.loader import load_parquet_to_duckdb
 
     execution_date = context["ds"]
-    parquet_path = f"{PROCESSED_DIR}/joined_{execution_date}.parquet"
+    parquet_path = os.path.join(PROCESSED_DIR, f"joined_{execution_date}.parquet")
 
     if not os.path.exists(parquet_path):
         print("Parquet missing — skipping load.")
         return
 
-    db_path = "/opt/airflow/data/crop_weather.duckdb"
-    con = duckdb.connect(db_path)
-
-    # Create table if not exists
-    con.execute("""
-        CREATE TABLE IF NOT EXISTS price_weather (
-            date VARCHAR,
-            commodity VARCHAR,
-            district VARCHAR,
-            state VARCHAR,
-            market VARCHAR,
-            min_price DOUBLE,
-            max_price DOUBLE,
-            modal_price DOUBLE,
-            precipitation_mm DOUBLE,
-            temp_max_c DOUBLE,
-            temp_min_c DOUBLE,
-            volatility_score DOUBLE
-        )
-    """)
-
-    # Insert new records (avoid duplicates)
-    con.execute(f"""
-        INSERT INTO price_weather
-        SELECT * FROM read_parquet('{parquet_path}')
-        WHERE date NOT IN (SELECT DISTINCT date FROM price_weather WHERE date = '{execution_date}')
-    """)
-
-    count = con.execute("SELECT COUNT(*) FROM price_weather").fetchone()[0]
-    con.close()
-    print(f"DuckDB updated. Total rows: {count}")
+    os.environ["DUCKDB_PATH"] = DUCKDB_PATH
+    load_parquet_to_duckdb(parquet_path, execution_date)
+    print(f"DuckDB updated at {DUCKDB_PATH}")
 
 
 def generate_alerts(**context):
-    """
-    Check volatility — print/log high-risk commodities.
-    Extend: send email / Slack / save to alerts table.
-    """
+    """Log high-volatility alerts (alerts table populated by db.loader)."""
     import duckdb
 
     execution_date = context["ds"]
-    db_path = "/opt/airflow/data/crop_weather.duckdb"
-    con = duckdb.connect(db_path)
+    con = duckdb.connect(DUCKDB_PATH)
 
-    alerts = con.execute(f"""
-        SELECT commodity, district, state, modal_price, volatility_score, precipitation_mm
-        FROM price_weather
-        WHERE date = '{execution_date}'
-          AND volatility_score > 0.3
+    alerts = con.execute(
+        """
+        SELECT commodity, district, volatility_score, modal_price, precipitation_mm
+        FROM alerts
+        WHERE alert_date = ?
         ORDER BY volatility_score DESC
         LIMIT 10
-    """).fetchdf()
+        """,
+        [execution_date],
+    ).fetchdf()
 
     con.close()
 
     if alerts.empty:
         print("No high-volatility alerts today.")
     else:
-        print(f"\n⚠️  HIGH VOLATILITY ALERT — {execution_date}")
+        print(f"\nHIGH VOLATILITY ALERT — {execution_date}")
         print(alerts.to_string(index=False))
 
-
-# ──────────────────────────────────────────
-# DAG DEFINITION
-# ──────────────────────────────────────────
 
 with DAG(
     dag_id="crop_weather_pipeline",
@@ -298,11 +162,22 @@ with DAG(
         python_callable=load_to_duckdb,
     )
 
-    t5_alerts = PythonOperator(
+    t5_dbt = BashOperator(
+        task_id="run_dbt_models",
+        bash_command=(
+            "dbt run --project-dir /opt/airflow/dbt_project "
+            "--profiles-dir /opt/airflow/dbt_project"
+        ),
+        env={
+            "RAW_DIR": RAW_DIR,
+            "DUCKDB_PATH": DUCKDB_PATH,
+        },
+    )
+
+    t6_alerts = PythonOperator(
         task_id="generate_alerts",
         python_callable=generate_alerts,
     )
 
-    # ── Pipeline order ──
-    # setup → [mandi + weather in parallel] → transform → load → alerts
-    t0_setup >> [t1_mandi, t2_weather] >> t3_transform >> t4_load >> t5_alerts
+    # setup → [mandi + weather in parallel] → transform → load → dbt → alerts
+    t0_setup >> [t1_mandi, t2_weather] >> t3_transform >> t4_load >> t5_dbt >> t6_alerts

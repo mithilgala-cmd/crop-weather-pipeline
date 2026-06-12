@@ -49,12 +49,7 @@ def check_and_seed_db():
             
     if db_needs_seeding:
         try:
-            import sys
-            # Append scripts to system path to import seeding utility
-            scripts_dir = str(Path(__file__).parent.parent / "scripts")
-            if scripts_dir not in sys.path:
-                sys.path.append(scripts_dir)
-            from seed_sample_data import seed_data
+            from scripts.seed_sample_data import seed_data
             seed_data(force=True)
         except Exception as e:
             st.error(f"Failed to auto-seed database: {e}")

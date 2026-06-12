@@ -63,6 +63,8 @@ graph TD
 
 ```text
 crop-weather-pipeline/
+├── config/
+│   └── constants.py               # Shared districts (8) and commodities (7)
 ├── dags/
 │   └── crop_weather_dag.py        # Airflow DAG defining daily workflow tasks
 ├── ingestion/
@@ -78,9 +80,17 @@ crop-weather-pipeline/
 ├── db/
 │   ├── schema.sql                 # DuckDB relational schema definitions
 │   └── loader.py                  # Idempotent loader (Parquet -> DuckDB)
+├── backend/
+│   └── app.py                     # FastAPI REST API (production / Docker / Vercel)
 ├── dashboard/
-│   ├── app.py                     # High-fidelity Streamlit user interface
+│   ├── app.py                     # Streamlit user interface (local dev)
 │   └── analyst.py                 # Gemini-powered natural-language analyst
+├── frontend/
+│   ├── index.html                 # Static dashboard consuming /api/*
+│   ├── dashboard.js
+│   └── style.css
+├── scripts/
+│   └── seed_sample_data.py        # Synthetic data seeder for local/demo use
 ├── dbt_project/
 │   ├── dbt_project.yml            # dbt configuration
 │   ├── profiles.yml               # dbt connection target (DuckDB)
@@ -97,7 +107,7 @@ crop-weather-pipeline/
 │   ├── test_loader.py             # Database loader and alerts verification
 │   ├── test_real_api.py           # Network-safe external API validation
 │   └── test_transform.py          # Transformations cleaning, joins, and volatility tests
-├── docker-compose.yml             # Scalable Airflow + Streamlit stack setup
+├── docker-compose.yml             # Airflow + FastAPI dashboard stack
 ├── requirements.txt               # Project dependencies
 └── README.md                      # Documentation
 ```
@@ -200,11 +210,13 @@ streamlit run dashboard/app.py
 ```
 
 ### 6. Run via Docker Compose
-To boot the full Airflow Scheduler, Webserver, PostgreSQL metadata database, and Streamlit Dashboard:
+To boot the Airflow Scheduler, Webserver, PostgreSQL metadata database, and **FastAPI + static frontend dashboard** on port **8000**:
 ```bash
 docker compose up --build
 ```
 > [!NOTE]
+> Docker serves the production-style **FastAPI API + static frontend** at `http://localhost:8000`. For the **Streamlit** dashboard during local development, use `streamlit run dashboard/app.py` (port 8501).
+>
 > Database initialization, schemas, and default admin user credentials (`admin`/`admin`) are automatically provisioned on the first boot via the `airflow-init` helper container.
 
 ---
@@ -229,7 +241,7 @@ During the system integration and live testing phases, several production-grade 
 
 ## 💼 Placement Portfolio Resume Bullets
 
-* **Built an End-to-End ELT Pipeline** ingesting daily mandi market crop prices + historical weather indices across 8 high-yield districts, orchestrated via scheduled daily Airflow DAG workflows.
+* **Built an End-to-End ELT Pipeline** ingesting daily mandi market crop prices + historical weather indices across 8 high-yield districts and 7 commodities, orchestrated via scheduled daily Airflow DAG workflows.
 * **Structured a dbt Medallion Architecture** (Bronze → Silver → Gold) directly on top of an embedded **DuckDB** analytical query engine, optimizing analytical joins and partitioning strategy.
 * **Integrated Gemini 2.5 Flash API** to build a grounded natural-language market analyst, converting database records into token-optimized contextual blocks to answer agricultural supply-chain and price volatility queries.
 * **Trained an XGBoost Regressor Model** achieving high accuracy on next-week agricultural price thresholds utilizing historical price lags, seasonal precipitation, and district temperature inputs.

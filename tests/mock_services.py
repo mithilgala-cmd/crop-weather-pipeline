@@ -5,6 +5,8 @@ from typing import Dict, List, Any, Optional, Union
 from unittest.mock import patch, Mock
 import requests
 
+from config.constants import COMMODITIES, DISTRICTS
+
 class MockResponse:
     """Mock standard requests.Response object for robust API mocking."""
     def __init__(self, json_data: Any, status_code: int = 200, headers: Optional[Dict[str, str]] = None):
@@ -22,19 +24,6 @@ class MockResponse:
 
 class MockAPIServer:
     """Enterprise API Mocking and Observability Server for Mandi and Open-Meteo APIs."""
-    
-    DISTRICTS = [
-        {"name": "Nashik", "lat": 20.0059, "lon": 73.7898, "state": "Maharashtra"},
-        {"name": "Agra", "lat": 27.1767, "lon": 78.0081, "state": "Uttar Pradesh"},
-        {"name": "Ludhiana", "lat": 30.9010, "lon": 75.8573, "state": "Punjab"},
-        {"name": "Guntur", "lat": 16.3067, "lon": 80.4365, "state": "Andhra Pradesh"},
-        {"name": "Indore", "lat": 22.7196, "lon": 75.8577, "state": "Madhya Pradesh"},
-        {"name": "Jaipur", "lat": 26.9124, "lon": 75.7873, "state": "Rajasthan"},
-        {"name": "Patna", "lat": 25.5941, "lon": 85.1376, "state": "Bihar"},
-        {"name": "Bhopal", "lat": 23.2599, "lon": 77.4126, "state": "Madhya Pradesh"},
-    ]
-    
-    COMMODITIES = ["Tomato", "Onion", "Potato", "Wheat", "Rice", "Maize", "Soybean"]
 
     def __init__(self, scenario: str = "happy_path", delay_ms: float = 0.0, rate_limit_threshold: int = 5, seed: int = 42):
         self.scenario = scenario
@@ -115,7 +104,7 @@ class MockAPIServer:
         records = []
         
         # In happy path and randomized scenario, return realistic items
-        for dist in self.DISTRICTS:
+        for dist in DISTRICTS:
             # Generate deterministic values based on commodity/district/date
             base_price = self._get_base_price(commodity)
             variance = self._get_volatility_variance(dist["name"], base_price)
@@ -155,7 +144,7 @@ class MockAPIServer:
         
         # Match back to district list
         district_name = "Nashik"
-        for dist in self.DISTRICTS:
+        for dist in DISTRICTS:
             if abs(dist["lat"] - float(lat)) < 0.1 and abs(dist["lon"] - float(lon)) < 0.1:
                 district_name = dist["name"]
                 break
