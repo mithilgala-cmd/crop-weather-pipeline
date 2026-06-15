@@ -10,4 +10,4 @@ dbt_project/target/
 dbt_project/logs/
 dbt_project/dbt_packages/
 models/saved/
-
+dbt_project/.user.yml
